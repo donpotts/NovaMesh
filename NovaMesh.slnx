@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/NovaMesh.Api/NovaMesh.Api.csproj" />
+    <Project Path="src/NovaMesh.AppHost/NovaMesh.AppHost.csproj" />
+    <Project Path="src/NovaMesh.Client/NovaMesh.Client.csproj" />
+    <Project Path="src/NovaMesh.Data/NovaMesh.Data.csproj" />
+    <Project Path="src/NovaMesh.DbMigrator/NovaMesh.DbMigrator.csproj" />
+    <Project Path="src/NovaMesh.ServiceDefaults/NovaMesh.ServiceDefaults.csproj" />
+  </Folder>
+  <Folder Name="/test/">
+    <Project Path="test/NovaMesh.Api.Tests/NovaMesh.Api.Tests.csproj" />
+  </Folder>
+</Solution>

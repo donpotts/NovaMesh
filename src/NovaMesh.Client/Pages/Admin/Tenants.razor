@@ -1,0 +1,84 @@
+@page "/admin/tenants"
+@inject HttpClient Http
+@inject ISnackbar Snackbar
+
+<PageTitle>SaaS Multi-Tenancy Management</PageTitle>
+
+<div class="d-flex justify-space-between align-center mb-4">
+    <div>
+        <MudText Typo="Typo.h5" Class="font-weight-bold"><MudIcon Icon="@Icons.Material.Filled.Domain" Class="mr-2" />SaaS Multi-Tenancy Management</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary">Manage tenant accounts, subscription editions, and database isolation strategies</MudText>
+    </div>
+    <div class="d-flex gap-2">
+        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Refresh" OnClick="LoadTenants">Refresh</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="OpenCreateDialog">New Tenant</MudButton>
+    </div>
+</div>
+
+<MudTable Items="@tenants" Loading="@loading" Elevation="2" Hover="true">
+    <HeaderContent>
+        <MudTh>Tenant Name</MudTh>
+        <MudTh>Normalized Name</MudTh>
+        <MudTh>Edition</MudTh>
+        <MudTh>Status</MudTh>
+        <MudTh>Database Mode</MudTh>
+        <MudTh>Created Date</MudTh>
+        <MudTh>Actions</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd>
+            <div class="d-flex align-center gap-2">
+                <MudAvatar Color="Color.Primary" Size="Size.Small"><MudIcon Icon="@Icons.Material.Filled.Business" Size="Size.Small" /></MudAvatar>
+                <MudText Typo="Typo.subtitle2" Class="font-weight-bold">@context.Name</MudText>
+            </div>
+        </MudTd>
+        <MudTd><code class="mud-typography-caption">@context.NormalizedName</code></MudTd>
+        <MudTd>
+            @if (context.EditionName == "Enterprise") { <MudChip T="string" Color="Color.Error" Size="Size.Small">Enterprise</MudChip> }
+            else if (context.EditionName == "Professional") { <MudChip T="string" Color="Color.Warning" Size="Size.Small">Professional</MudChip> }
+            else { <MudChip T="string" Color="Color.Info" Size="Size.Small">Standard</MudChip> }
+        </MudTd>
+        <MudTd>
+            @if (context.IsActive) { <MudChip T="string" Color="Color.Success" Size="Size.Small">Active</MudChip> }
+            else { <MudChip T="string" Color="Color.Default" Size="Size.Small">Suspended</MudChip> }
+        </MudTd>
+        <MudTd>
+            @if (string.IsNullOrWhiteSpace(context.ConnectionString)) { <MudText Typo="Typo.caption" Color="Color.Secondary">Shared Database</MudText> }
+            else { <MudText Typo="Typo.caption" Color="Color.Primary">Dedicated Connection</MudText> }
+        </MudTd>
+        <MudTd>@context.CreatedAt.ToString("MMM dd, yyyy")</MudTd>
+        <MudTd>
+            <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" OnClick="() => DeleteTenant(context.Id)" />
+        </MudTd>
+    </RowTemplate>
+</MudTable>
+
+@code {
+    private List<TenantDto> tenants = new();
+    private bool loading = false;
+
+    protected override async Task OnInitializedAsync() => await LoadTenants();
+
+    private async Task LoadTenants()
+    {
+        loading = true;
+        try
+        {
+            tenants = await Http.GetFromJsonAsync<List<TenantDto>>("/api/tenants") ?? new();
+        }
+        catch { }
+        finally { loading = false; }
+    }
+
+    private void OpenCreateDialog() => Snackbar.Add("Tenant creation dialog open.", Severity.Info);
+
+    private async Task DeleteTenant(Guid id)
+    {
+        var res = await Http.DeleteAsync($"/api/tenants/{id}");
+        if (res.IsSuccessStatusCode)
+        {
+            Snackbar.Add("Tenant deleted.", Severity.Success);
+            await LoadTenants();
+        }
+    }
+}

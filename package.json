@@ -1,0 +1,13 @@
+{
+  "name": "ask2app-platform",
+  "version": "1.0.0",
+  "description": "Ask2App | My Platform",
+  "scripts": {
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.1.0"
+  }
+}

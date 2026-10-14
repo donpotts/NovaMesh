@@ -1,0 +1,533 @@
+@page "/"
+@inject HttpClient Http
+@inject AuthService Auth
+@inject IDialogService DialogService
+@inject NavigationManager Nav
+@inject TenantStateService TenantState
+@inject ThemeService Theme
+@implements IDisposable
+
+@if (!Auth.IsAuthenticated)
+{
+    <!-- ========================================================================= -->
+    <!-- PUBLIC LANDING PAGE (DEFAULT FOR UNAUTHENTICATED VISITORS)                -->
+    <!-- ========================================================================= -->
+    <PageTitle>@(TenantState.CurrentTenant?.Name ?? "NovaMesh") - Home</PageTitle>
+
+    <!-- Public Hero Section -->
+    <MudPaper Elevation="0" Class="pa-6 pa-md-12 rounded-xl mb-8 position-relative overflow-hidden" 
+              Style="@($"background: linear-gradient(135deg, {(TenantState.CurrentTenant?.PrimaryColor ?? "#4F46E5")}18 0%, {(TenantState.CurrentTenant?.SecondaryColor ?? "#06B6D4")}12 100%); border: 1px solid rgba(255,255,255,0.12);")">
+        <MudGrid Class="align-center">
+            <MudItem xs="12" md="7">
+                <div class="d-flex align-center gap-2 mb-3 flex-wrap">
+                    <MudChip T="string" Color="Color.Primary" Size="Size.Small" Variant="Variant.Filled">.NET 10 & WASM</MudChip>
+                    <MudChip T="string" Color="Color.Secondary" Size="Size.Small" Variant="Variant.Outlined">MULTI-TENANT READY</MudChip>
+                    <MudChip T="string" Color="Color.Success" Size="Size.Small" Variant="Variant.Filled">AI RAG & AGENTS</MudChip>
+                </div>
+                <MudText Typo="Typo.h3" Class="font-weight-black mb-3" Style="line-height: 1.2;">
+                    Welcome to <span style="@($"color: {(TenantState.CurrentTenant?.PrimaryColor ?? "#4F46E5")};")">@(TenantState.CurrentTenant?.Name ?? "NovaMesh")</span>
+                </MudText>
+                <MudText Typo="Typo.h6" Color="Color.Secondary" Class="mb-6 font-weight-normal" Style="line-height: 1.5; max-width: 650px;">
+                    @(TenantState.CurrentTenant?.Slogan ?? "The modern high-performance cloud platform engineered with autonomous AI agents, multi-tenant isolation, and modular architecture.")
+                </MudText>
+                
+                <div class="d-flex align-center gap-3 flex-wrap mb-6">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large" StartIcon="@Icons.Material.Filled.Login" OnClick="OpenLogin" Class="px-6 py-2 rounded-lg font-weight-bold shadow-lg">
+                        Sign In
+                    </MudButton>
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Large" StartIcon="@Icons.Material.Filled.PersonAdd" OnClick="OpenRegister" Class="px-6 py-2 rounded-lg font-weight-bold">
+                        Create Account
+                    </MudButton>
+                    <MudButton Variant="Variant.Text" Color="Color.Secondary" Size="Size.Medium" StartIcon="@Icons.Material.Filled.Api" Href="http://localhost:5000/scalar/v1" Target="_blank">
+                        Scalar API Docs
+                    </MudButton>
+                </div>
+
+                <!-- 1-Click Fast Persona Demo Exploration Strip -->
+                <MudPaper Elevation="1" Class="pa-3 rounded-lg" Style="background: rgba(0,0,0,0.04); border: 1px dashed rgba(128,128,128,0.3); max-width: 600px;">
+                    <div class="d-flex align-center gap-2 mb-2">
+                        <MudIcon Icon="@Icons.Material.Filled.FlashOn" Size="Size.Small" Color="Color.Warning" />
+                        <MudText Typo="Typo.caption" Class="font-weight-bold" Color="Color.Secondary">EXPLORE DEMO PERSONAS (1-CLICK FAST LOGIN):</MudText>
+                    </div>
+                    <div class="d-flex align-center gap-2 flex-wrap">
+                        <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Error" StartIcon="@Icons.Material.Filled.AdminPanelSettings" OnClick='() => QuickLogin("admin", "Admin123!")'>Admin</MudButton>
+                        <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Warning" StartIcon="@Icons.Material.Filled.Edit" OnClick='() => QuickLogin("editor", "Editor123!")'>Editor</MudButton>
+                        <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Send" OnClick='() => QuickLogin("publisher", "Publisher123!")'>Publisher</MudButton>
+                        <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Success" StartIcon="@Icons.Material.Filled.Person" OnClick='() => QuickLogin("user", "User123!")'>User</MudButton>
+                    </div>
+                </MudPaper>
+
+                <MudCard Elevation="2" Class="pa-4 rounded-xl mt-4" Style="background: rgba(var(--mud-palette-primary-rgb), 0.05); border: 1px solid rgba(var(--mud-palette-primary-rgb), 0.2);">
+                    <div class="d-flex align-center justify-space-between flex-wrap gap-2">
+                        <div class="d-flex align-center gap-2">
+                            <MudIcon Icon="@Icons.Material.Filled.Speed" Color="Color.Primary" />
+                            <div>
+                                <MudText Typo="Typo.subtitle2" Class="font-weight-bold">Aspire Telemetry & Resilience Dashboard</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Inspect cloud services, OpenTelemetry traces, and simulate Polly resilience faults</MudText>
+                            </div>
+                        </div>
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" Href="/aspire/telemetry" StartIcon="@Icons.Material.Filled.Speed">Open Telemetry Dashboard</MudButton>
+                    </div>
+                </MudCard>
+            </MudItem>
+
+            <MudItem xs="12" md="5" Class="d-flex justify-center">
+                <MudCard Elevation="4" Class="pa-6 rounded-2xl w-100" Style="border: 1px solid rgba(255,255,255,0.15); max-width: 440px;">
+                    <div class="d-flex align-center justify-space-between mb-4">
+                        <div class="d-flex align-center gap-2">
+                            <MudAvatar Size="Size.Medium" Style="@($"background: {(TenantState.CurrentTenant?.PrimaryColor ?? "#4F46E5")}; color: white;")">
+                                <MudIcon Icon="@Icons.Material.Filled.Security" />
+                            </MudAvatar>
+                            <div>
+                                <MudText Typo="Typo.subtitle1" Class="font-weight-bold">Platform Portal</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Role-Based Access Control</MudText>
+                            </div>
+                        </div>
+                        <MudChip T="string" Color="Color.Success" Size="Size.Small" Variant="Variant.Outlined">Secured</MudChip>
+                    </div>
+                    <MudDivider Class="mb-4" />
+                    <MudList T="string" Dense="true" Class="py-0">
+                        <MudListItem Icon="@Icons.Material.Filled.CheckCircle" IconColor="Color.Success">
+                            <MudText Typo="Typo.body2"><strong>Multi-Tenant Isolation:</strong> Dedicated database and domain binding</MudText>
+                        </MudListItem>
+                        <MudListItem Icon="@Icons.Material.Filled.CheckCircle" IconColor="Color.Success">
+                            <MudText Typo="Typo.body2"><strong>AI Suite:</strong> Autonomous agents & Hybrid Vector RAG</MudText>
+                        </MudListItem>
+                        <MudListItem Icon="@Icons.Material.Filled.CheckCircle" IconColor="Color.Success">
+                            <MudText Typo="Typo.body2"><strong>Full RBAC:</strong> Granular permissions, JWT auth, and audit trail</MudText>
+                        </MudListItem>
+                        <MudListItem Icon="@Icons.Material.Filled.CheckCircle" IconColor="Color.Success">
+                            <MudText Typo="Typo.body2"><strong>Scalar OpenAPI:</strong> Live interactive API specification</MudText>
+                        </MudListItem>
+                    </MudList>
+                    <div class="mt-4 pt-3 border-t d-flex gap-2">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true" StartIcon="@Icons.Material.Filled.Login" OnClick="OpenLogin">
+                            Sign In
+                        </MudButton>
+                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" FullWidth="true" StartIcon="@Icons.Material.Filled.PersonAdd" OnClick="OpenRegister">
+                            Register
+                        </MudButton>
+                    </div>
+                </MudCard>
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+
+    <!-- Platform Value Highlights Grid -->
+    <MudGrid Class="mb-8">
+        <MudItem xs="12" sm="6" md="3">
+            <MudCard Elevation="2" Class="pa-5 h-100 rounded-xl hover-elevation">
+                <MudAvatar Color="Color.Primary" Variant="Variant.Filled" Size="Size.Medium" Class="mb-3">
+                    <MudIcon Icon="@Icons.Material.Filled.Domain" />
+                </MudAvatar>
+                <MudText Typo="Typo.h6" Class="font-weight-bold mb-1">Multi-Tenancy</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">Isolated tenant partitions, per-tenant themes, custom domain bindings, and automated tenant routing.</MudText>
+            </MudCard>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudCard Elevation="2" Class="pa-5 h-100 rounded-xl hover-elevation">
+                <MudAvatar Color="Color.Secondary" Variant="Variant.Filled" Size="Size.Medium" Class="mb-3">
+                    <MudIcon Icon="@Icons.Material.Filled.Psychology" />
+                </MudAvatar>
+                <MudText Typo="Typo.h6" Class="font-weight-bold mb-1">AI Agent & RAG</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">Native vector embeddings, document chunking, semantic similarity retrieval, and autonomous agent workbench.</MudText>
+            </MudCard>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudCard Elevation="2" Class="pa-5 h-100 rounded-xl hover-elevation">
+                <MudAvatar Color="Color.Success" Variant="Variant.Filled" Size="Size.Medium" Class="mb-3">
+                    <MudIcon Icon="@Icons.Material.Filled.Speed" />
+                </MudAvatar>
+                <MudText Typo="Typo.h6" Class="font-weight-bold mb-1">.NET 10 High Velocity</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">Microsecond minimal APIs, SQLite/PostgreSQL persistence, and MudBlazor WebAssembly client frontend.</MudText>
+            </MudCard>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudCard Elevation="2" Class="pa-5 h-100 rounded-xl hover-elevation">
+                <MudAvatar Color="Color.Warning" Variant="Variant.Filled" Size="Size.Medium" Class="mb-3">
+                    <MudIcon Icon="@Icons.Material.Filled.Security" />
+                </MudAvatar>
+                <MudText Typo="Typo.h6" Class="font-weight-bold mb-1">Enterprise RBAC</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">Role-based access control, cryptographic password hashing, audit logs, and OpenAPI Scalar documentation.</MudText>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+}
+else
+{
+    <!-- ========================================================================= -->
+    <!-- AUTHENTICATED ENTERPRISE MISSION CONTROL DASHBOARD                        -->
+    <!-- ========================================================================= -->
+    <PageTitle>NovaMesh Enterprise Dashboard</PageTitle>
+
+    <!-- Active Tenant Brand Spotlight Hero Banner (Sleek Compact Strip) -->
+<MudCard Elevation="2" Class="mb-4 py-2 px-3 rounded-lg" Style="@($"border-left: 6px solid {(TenantState.CurrentTenant?.PrimaryColor ?? "#4F46E5")}; background: linear-gradient(135deg, {(TenantState.CurrentTenant != null ? TenantState.CurrentTenant.PrimaryColor + "15" : "rgba(79,70,229,0.08)")} 0%, rgba(255,255,255,0.01) 100%);")">
+    <div class="d-flex flex-column flex-md-row justify-space-between align-start align-md-center gap-2">
+        <div class="d-flex align-center gap-2">
+            <MudAvatar Size="Size.Medium" Style="@($"background: linear-gradient(135deg, {(TenantState.CurrentTenant?.PrimaryColor ?? "#4F46E5")} 0%, {(TenantState.CurrentTenant?.SecondaryColor ?? "#06B6D4")} 100%); color: white; font-weight: 800; font-size: 1.1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.2); flex-shrink: 0;")">
+                @(TenantState.CurrentTenant?.Name[0].ToString().ToUpper() ?? "H")
+            </MudAvatar>
+            <div>
+                <div class="d-flex align-center gap-2 flex-wrap">
+                    <MudText Typo="Typo.subtitle1" Class="font-weight-bold">
+                        @(TenantState.CurrentTenant?.Name ?? "Host Root Organization")
+                    </MudText>
+                    <MudChip T="string" Size="Size.Small" Style="@($"background: {(TenantState.CurrentTenant?.PrimaryColor ?? "#4F46E5")}; color: white; font-weight: 600; height: 20px; font-size: 0.7rem;")">
+                        @(TenantState.CurrentTenant?.EditionName ?? "Global") Tier
+                    </MudChip>
+                    <code style="font-size: 0.72rem; color: #94a3b8; background: rgba(0,0,0,0.2); padding: 1px 4px; border-radius: 4px;">@(TenantState.CurrentTenant?.CustomDomain ?? "host.nexus.local")</code>
+                </div>
+                <MudText Typo="Typo.caption" Class="mt-0" Style="color: #cbd5e1 !important;">
+                    @(TenantState.CurrentTenant?.Slogan ?? "Primary Root Infrastructure Environment")
+                </MudText>
+            </div>
+        </div>
+
+        <!-- 1-Click Fast Tenant Switcher Pills -->
+        <div class="d-flex align-center gap-1 flex-wrap">
+            <MudText Typo="Typo.caption" Class="font-weight-bold d-none d-lg-inline" Style="color: #94a3b8; font-size: 0.68rem;">SWITCH BRAND:</MudText>
+            @foreach (var t in TenantState.Tenants)
+            {
+                var isSelected = TenantState.CurrentTenant?.Id == t.Id;
+                <MudButton Size="Size.Small"
+                           Variant="@(isSelected ? Variant.Filled : Variant.Outlined)"
+                           Style="@($"border-color: {t.PrimaryColor}; color: {(isSelected ? "white" : t.PrimaryColor)}; background: {(isSelected ? t.PrimaryColor : "transparent")}; text-transform: none; font-size: 0.7rem; font-weight: 600; padding: 2px 8px; min-height: 24px;")"
+                           OnClick="@(() => SwitchTenant(t))">
+                    @t.Name
+                </MudButton>
+            }
+            <MudButton Size="Size.Small"
+                       Variant="@(TenantState.CurrentTenant == null ? Variant.Filled : Variant.Outlined)"
+                       Color="Color.Default"
+                       Style="text-transform: none; font-size: 0.7rem; padding: 2px 8px; min-height: 24px;"
+                       OnClick="@(() => SwitchTenant(null))">
+                Host
+            </MudButton>
+        </div>
+    </div>
+</MudCard>
+
+<!-- Header & Welcome Banner -->
+<div class="d-flex justify-space-between align-center mb-6 flex-wrap gap-4">
+    <div>
+        <div class="d-flex align-center gap-2 mb-1">
+            <MudChip T="string" Color="Color.Primary" Size="Size.Small" Variant="Variant.Filled">MY PLATFORM ARCHITECTURE SUITE</MudChip>
+            <MudChip T="string" Color="Color.Success" Size="Size.Small" Variant="Variant.Outlined">AI RAG & AGENT ENABLED</MudChip>
+        </div>
+        <MudText Typo="Typo.h4" Class="font-weight-bold">Enterprise Mission Control</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary">Unified analytics dashboard with live HTTP telemetry, AI RAG vector metrics, and multi-tenant KPIs</MudText>
+    </div>
+    <div class="d-flex gap-2">
+        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Refresh" OnClick="LoadDashboard">Refresh</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.SmartToy" OnClick='() => Nav.NavigateTo("/ai/agent")'>Open AI Agent</MudButton>
+    </div>
+</div>
+
+<!-- KPI Cards Row -->
+<MudGrid Class="mb-6">
+    <MudItem xs="12" sm="6" md="3">
+        <MudCard Elevation="2" Class="pa-4 rounded-xl">
+            <div class="d-flex justify-space-between align-center">
+                <div>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">ACTIVE USERS</MudText>
+                    <MudText Typo="Typo.h4" Class="font-weight-bold">@(analytics != null ? analytics.ActiveUsers.ToString() : "-")</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Success">RBAC Enforced</MudText>
+                </div>
+                <MudAvatar Color="Color.Primary" Size="Size.Large"><MudIcon Icon="@Icons.Material.Filled.People" /></MudAvatar>
+            </div>
+        </MudCard>
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <MudCard Elevation="2" Class="pa-4 rounded-xl">
+            <div class="d-flex justify-space-between align-center">
+                <div>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">AUDIT TRAIL LOGS</MudText>
+                    <MudText Typo="Typo.h4" Class="font-weight-bold">@(analytics != null ? analytics.TotalAuditLogs.ToString("N0") : "-")</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Info">Avg @(analytics != null ? analytics.AvgLatencyMs.ToString() : "0")ms Latency</MudText>
+                </div>
+                <MudAvatar Color="Color.Info" Size="Size.Large"><MudIcon Icon="@Icons.Material.Filled.History" /></MudAvatar>
+            </div>
+        </MudCard>
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <MudCard Elevation="2" Class="pa-4 rounded-xl">
+            <div class="d-flex justify-space-between align-center">
+                <div>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">AI RAG CHUNKS</MudText>
+                    <MudText Typo="Typo.h4" Class="font-weight-bold">@(analytics != null ? analytics.TotalRagChunks.ToString() : "-")</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Warning">768-dim Vector Space</MudText>
+                </div>
+                <MudAvatar Color="Color.Warning" Size="Size.Large"><MudIcon Icon="@Icons.Material.Filled.Grain" /></MudAvatar>
+            </div>
+        </MudCard>
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <MudCard Elevation="2" Class="pa-4 rounded-xl">
+            <div class="d-flex justify-space-between align-center">
+                <div>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">API HEALTH & RELIABILITY</MudText>
+                    <MudText Typo="Typo.h4" Class="font-weight-bold">@(analytics != null ? $"{analytics.SuccessRatePercent:F1}%" : "-")</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Success">Live Telemetry</MudText>
+                </div>
+                <MudAvatar Color="Color.Success" Size="Size.Large"><MudIcon Icon="@Icons.Material.Filled.CheckCircle" /></MudAvatar>
+            </div>
+        </MudCard>
+    </MudItem>
+</MudGrid>
+
+<!-- Interactive MudBlazor Charts: Traffic Telemetry & Status Codes -->
+<MudGrid Class="mb-6">
+    <MudItem xs="12" lg="8">
+        <MudCard Elevation="2" Class="pa-5 rounded-xl">
+            <div class="d-flex justify-space-between align-center mb-4 flex-wrap gap-2">
+                <div>
+                    <MudText Typo="Typo.h6" Class="font-weight-bold">HTTP Request Traffic & Latency Trends</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Hourly request frequency and response durations across API gateway</MudText>
+                </div>
+                <MudChip T="string" Color="Color.Primary" Size="Size.Small" Variant="Variant.Outlined">Real-Time Telemetry</MudChip>
+            </div>
+            @if (trafficSeries.Count > 0 && trafficSeries.Any(s => s.Data.Any(v => v > 0)))
+            {
+                <MudChart ChartType="ChartType.Line"
+                          ChartSeries="@trafficSeries"
+                          XAxisLabels="@xAxisLabels"
+                          Width="100%"
+                          Height="300px" />
+            }
+            else
+            {
+                <div class="d-flex flex-column justify-center align-center pa-6 text-center" style="height: 300px;">
+                    <MudIcon Icon="@Icons.Material.Outlined.Timeline" Size="Size.Large" Color="Color.Primary" Class="mb-2" />
+                    <MudText Typo="Typo.subtitle1" Color="Color.Secondary">No Traffic Recorded Yet</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Request frequency and latency curves will appear here as live API calls arrive.</MudText>
+                </div>
+            }
+        </MudCard>
+    </MudItem>
+
+    <MudItem xs="12" lg="4">
+        <MudCard Elevation="2" Class="pa-5 rounded-xl">
+            <div class="d-flex justify-space-between align-center mb-4">
+                <div>
+                    <MudText Typo="Typo.h6" Class="font-weight-bold">HTTP Status Codes</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Request outcome breakdown</MudText>
+                </div>
+                <MudChip T="string" Color="Color.Success" Size="Size.Small">@(analytics != null ? $"{analytics.SuccessRatePercent:F1}% Pass" : "Live Pass")</MudChip>
+            </div>
+            @if (statusData.Length > 0 && statusData.Sum() > 0)
+            {
+                <MudChart ChartType="ChartType.Donut"
+                          InputData="@statusData"
+                          InputLabels="@statusLabels"
+                          Width="100%"
+                          Height="300px" />
+            }
+            else
+            {
+                <div class="d-flex flex-column justify-center align-center pa-6 text-center" style="height: 300px;">
+                    <MudIcon Icon="@Icons.Material.Outlined.CheckCircleOutline" Size="Size.Large" Color="Color.Success" Class="mb-2" />
+                    <MudText Typo="Typo.subtitle1" Color="Color.Secondary">No Requests Logged Yet</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">HTTP response breakdown will appear here once requests are processed.</MudText>
+                </div>
+            }
+        </MudCard>
+    </MudItem>
+</MudGrid>
+
+<!-- Interactive MudBlazor Charts: AI Usage & Tenant Distribution -->
+<MudGrid Class="mb-6">
+    <MudItem xs="12" lg="7">
+        <MudCard Elevation="2" Class="pa-5 rounded-xl">
+            <div class="d-flex justify-space-between align-center mb-4 flex-wrap gap-2">
+                <div>
+                    <MudText Typo="Typo.h6" Class="font-weight-bold">AI RAG Vector Queries & Token Throughput</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Daily token consumption and semantic search lookups</MudText>
+                </div>
+                <MudChip T="string" Color="Color.Warning" Size="Size.Small" Variant="Variant.Outlined">Ollama Integration</MudChip>
+            </div>
+            @if (aiSeries.Count > 0 && aiSeries.Any(s => s.Data.Any(v => v > 0)))
+            {
+                <MudChart ChartType="ChartType.Bar"
+                          ChartSeries="@aiSeries"
+                          XAxisLabels="@aiXLabels"
+                          Width="100%"
+                          Height="280px" />
+            }
+            else
+            {
+                <div class="d-flex flex-column justify-center align-center pa-6 text-center" style="height: 280px;">
+                    <MudIcon Icon="@Icons.Material.Outlined.SmartToy" Size="Size.Large" Color="Color.Warning" Class="mb-2" />
+                    <MudText Typo="Typo.subtitle1" Color="Color.Secondary">No AI Interactions Yet</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Ingest documentation or initiate AI agent conversations to see token analytics.</MudText>
+                </div>
+            }
+        </MudCard>
+    </MudItem>
+
+    <MudItem xs="12" lg="5">
+        <MudCard Elevation="2" Class="pa-5 rounded-xl">
+            <div class="d-flex justify-space-between align-center mb-4">
+                <div>
+                    <MudText Typo="Typo.h6" Class="font-weight-bold">SaaS Multi-Tenant Allocation</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Active enterprise accounts & quotas</MudText>
+                </div>
+                <MudChip T="string" Color="Color.Primary" Size="Size.Small">@(analytics != null ? $"{analytics.TenantCounts.Length} Active" : "Multi-Tenant")</MudChip>
+            </div>
+            @if (tenantData.Length > 0 && tenantData.Sum() > 0)
+            {
+                <MudChart ChartType="ChartType.Pie"
+                          InputData="@tenantData"
+                          InputLabels="@tenantLabels"
+                          Width="100%"
+                          Height="280px" />
+            }
+            else
+            {
+                <div class="d-flex flex-column justify-center align-center pa-6 text-center" style="height: 280px;">
+                    <MudIcon Icon="@Icons.Material.Outlined.Business" Size="Size.Large" Color="Color.Info" Class="mb-2" />
+                    <MudText Typo="Typo.subtitle1" Color="Color.Secondary">No Active Tenants Yet</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Provision SaaS tenants to view multi-tenant distribution metrics.</MudText>
+                </div>
+            }
+        </MudCard>
+    </MudItem>
+</MudGrid>
+
+<!-- AI Suite & Autonomous Agent Feature Spotlight -->
+<MudCard Elevation="3" Class="pa-6 mb-6 rounded-xl" Style="border-left: 5px solid var(--mud-palette-primary);">
+    <div class="d-flex justify-space-between align-center flex-wrap gap-4">
+        <div>
+            <div class="d-flex align-center gap-2 mb-2">
+                <MudChip T="string" Color="Color.Primary" Size="Size.Small" Variant="Variant.Filled">AI SUITE SPOTLIGHT</MudChip>
+                <MudText Typo="Typo.h5" Class="font-weight-bold">Autonomous AI Agent & Vector RAG Ingestion</MudText>
+            </div>
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Style="max-width: 850px;">
+                Equipped with semantic vector embeddings (768-dim), cosine similarity ranking, source citations, and autonomous tool calling for system health audits, C# MudBlazor component synthesis, and multi-tenant security verification.
+            </MudText>
+        </div>
+        <div class="d-flex gap-2">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.SmartToy" OnClick='() => Nav.NavigateTo("/ai/agent")'>Open AI Agent</MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.LibraryBooks" OnClick='() => Nav.NavigateTo("/ai/knowledge")'>Knowledge Base</MudButton>
+        </div>
+    </div>
+</MudCard>
+
+<!-- Quick Persona Testing Switcher -->
+<MudCard Elevation="2" Class="pa-4 mb-6 rounded-xl">
+    <MudText Typo="Typo.h6" Class="mb-2"><MudIcon Icon="@Icons.Material.Filled.Badge" Class="mr-2" />Instant Persona Testing Switcher</MudText>
+    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">Click any persona below to authenticate instantly with seeded permissions:</MudText>
+    <div class="d-flex flex-wrap gap-2">
+        <MudButton Variant="Variant.Filled" Color="Color.Error" Size="Size.Small" OnClick='() => SwitchUser("admin", "Admin123!")'>Admin (Full Control)</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Success" Size="Size.Small" OnClick='() => SwitchUser("user", "User123!")'>Standard Public User</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Warning" Size="Size.Small" OnClick='() => SwitchUser("editor", "Editor123!")'>Domain Editor / Manager</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Secondary" Size="Size.Small" OnClick='() => SwitchUser("publisher", "Publisher123!")'>Publisher / Staff</MudButton>
+    </div>
+</MudCard>
+}
+
+@code {
+    private DashboardAnalyticsDto? analytics;
+
+    // Chart 1: Traffic
+    private List<ChartSeries> trafficSeries = new();
+    private string[] xAxisLabels = new[] { "00:00", "04:00", "08:00", "12:00", "16:00", "20:00", "Now" };
+
+    // Chart 2: Status Codes
+    private double[] statusData = Array.Empty<double>();
+    private string[] statusLabels = Array.Empty<string>();
+
+    // Chart 3: AI Usage
+    private List<ChartSeries> aiSeries = new();
+    private string[] aiXLabels = new[] { "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" };
+
+    // Chart 4: Tenants
+    private double[] tenantData = Array.Empty<double>();
+    private string[] tenantLabels = Array.Empty<string>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        TenantState.OnTenantChanged += OnTenantUpdated;
+        Auth.OnAuthStateChanged += OnAuthUpdated;
+        if (Auth.IsAuthenticated)
+        {
+            await LoadDashboard();
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Auth.IsAuthenticated)
+        {
+            await LoadDashboard();
+        }
+    }
+
+    public void Dispose()
+    {
+        TenantState.OnTenantChanged -= OnTenantUpdated;
+        Auth.OnAuthStateChanged -= OnAuthUpdated;
+    }
+
+    private void OnTenantUpdated()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private async void OnAuthUpdated()
+    {
+        if (Auth.IsAuthenticated)
+        {
+            await LoadDashboard();
+        }
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task SwitchTenant(TenantDto? tenant)
+    {
+        await TenantState.SelectTenantAsync(tenant, Theme);
+    }
+
+    private async Task LoadDashboard()
+    {
+        try
+        {
+            analytics = await Http.GetFromJsonAsync<DashboardAnalyticsDto>("/api/analytics/dashboard");
+            if (analytics != null)
+            {
+                xAxisLabels = analytics.HourlyTrafficLabels;
+                trafficSeries = new List<ChartSeries>
+                {
+                    new ChartSeries { Name = "Requests", Data = analytics.RequestCounts },
+                    new ChartSeries { Name = "Latency (ms)", Data = analytics.LatencyMs }
+                };
+
+                statusData = analytics.StatusCodeCounts;
+                statusLabels = analytics.StatusCodeLabels;
+
+                aiXLabels = analytics.AiUsageLabels;
+                aiSeries = new List<ChartSeries>
+                {
+                    new ChartSeries { Name = "Vector Queries", Data = analytics.AiVectorQueries },
+                    new ChartSeries { Name = "Tokens (k)", Data = analytics.AiTokensConsumed.Select(v => v / 100).ToArray() }
+                };
+
+                tenantData = analytics.TenantCounts;
+                tenantLabels = analytics.TenantDistributionLabels;
+            }
+        }
+        catch { }
+    }
+
+    private async Task OpenLogin() => await DialogService.ShowAsync<Components.LoginDialog>("Authentication", new DialogParameters { ["InitialTab"] = 0 });
+    private async Task OpenRegister() => await DialogService.ShowAsync<Components.LoginDialog>("Authentication", new DialogParameters { ["InitialTab"] = 1 });
+    private async Task QuickLogin(string u, string p)
+    {
+        var success = await Auth.LoginAsync(u, p);
+        if (success)
+        {
+            await LoadDashboard();
+            StateHasChanged();
+        }
+    }
+    private async Task SwitchUser(string u, string p) => await QuickLogin(u, p);
+}

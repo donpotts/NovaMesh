@@ -1,0 +1,408 @@
+@page "/aspire/telemetry"
+@inject HttpClient Http
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<PageTitle>Aspire Distributed Telemetry & Polly Resilience</PageTitle>
+
+<div class="d-flex justify-space-between align-center mb-4 flex-wrap gap-2">
+    <div>
+        <MudText Typo="Typo.h5" Class="font-weight-bold">
+            <MudIcon Icon="@Icons.Material.Filled.Speed" Class="mr-2" Color="Color.Primary" />
+            .NET Aspire Distributed Telemetry & Resilience
+        </MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary">
+            Service Discovery orchestration, OpenTelemetry span waterfall correlation, and Polly fault tolerance
+        </MudText>
+    </div>
+    <div class="d-flex gap-2">
+        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Refresh" OnClick="LoadAllData">Refresh</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Send" OnClick="@(() => _showDispatchDialog = true)">Dispatch Distributed Order</MudButton>
+    </div>
+</div>
+
+<!-- Cloud Overview Metric Cards -->
+<MudGrid Class="mb-4">
+    <MudItem xs="12" sm="6" md="3">
+        <MudCard Elevation="2" Class="pa-4 rounded-lg" Style="border-left: 4px solid var(--mud-palette-success); background: rgba(var(--mud-palette-surface-rgb), 0.8);">
+            <div class="d-flex justify-space-between align-center">
+                <div>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">ORCHESTRATED SERVICES</MudText>
+                    <MudText Typo="Typo.h4" Class="font-weight-bold">@resources.Count</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Success">● All Systems Healthy</MudText>
+                </div>
+                <MudAvatar Color="Color.Success" Variant="Variant.Filled" Size="Size.Large"><MudIcon Icon="@Icons.Material.Filled.CloudDone" /></MudAvatar>
+            </div>
+        </MudCard>
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <MudCard Elevation="2" Class="pa-4 rounded-lg" Style="border-left: 4px solid var(--mud-palette-info); background: rgba(var(--mud-palette-surface-rgb), 0.8);">
+            <div class="d-flex justify-space-between align-center">
+                <div>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">DISTRIBUTED SPANS</MudText>
+                    <MudText Typo="Typo.h4" Class="font-weight-bold">@traces.Count</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Info">OpenTelemetry ActivitySource</MudText>
+                </div>
+                <MudAvatar Color="Color.Info" Variant="Variant.Filled" Size="Size.Large"><MudIcon Icon="@Icons.Material.Filled.Timeline" /></MudAvatar>
+            </div>
+        </MudCard>
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <MudCard Elevation="2" Class="pa-4 rounded-lg" Style="border-left: 4px solid var(--mud-palette-primary); background: rgba(var(--mud-palette-surface-rgb), 0.8);">
+            <div class="d-flex justify-space-between align-center">
+                <div>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">CROSS-SERVICE ORDERS</MudText>
+                    <MudText Typo="Typo.h4" Class="font-weight-bold">@orders.Count</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Primary">Correlated Trace IDs</MudText>
+                </div>
+                <MudAvatar Color="Color.Primary" Variant="Variant.Filled" Size="Size.Large"><MudIcon Icon="@Icons.Material.Filled.Receipt" /></MudAvatar>
+            </div>
+        </MudCard>
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <MudCard Elevation="2" Class="pa-4 rounded-lg" Style="border-left: 4px solid var(--mud-palette-warning); background: rgba(var(--mud-palette-surface-rgb), 0.8);">
+            <div class="d-flex justify-space-between align-center">
+                <div>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">POLLY RESILIENCE</MudText>
+                    <MudText Typo="Typo.h4" Class="font-weight-bold">Active</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Warning">Retry • CircuitBreaker • Timeout</MudText>
+                </div>
+                <MudAvatar Color="Color.Warning" Variant="Variant.Filled" Size="Size.Large"><MudIcon Icon="@Icons.Material.Filled.Shield" /></MudAvatar>
+            </div>
+        </MudCard>
+    </MudItem>
+</MudGrid>
+
+<!-- Service Discovery: Orchestrated Cloud Services Grid -->
+<MudCard Elevation="2" Class="pa-4 mb-6 rounded-lg">
+    <div class="d-flex justify-space-between align-center mb-3">
+        <MudText Typo="Typo.h6" Class="font-weight-bold">
+            <MudIcon Icon="@Icons.Material.Filled.Hub" Class="mr-2" Color="Color.Primary" />
+            Aspire AppHost Service Discovery & Health
+        </MudText>
+        <MudChip T="string" Color="Color.Success" Size="Size.Small" Variant="Variant.Filled">DistributedApplication Runtime</MudChip>
+    </div>
+    <MudGrid>
+        @foreach (var res in resources)
+        {
+            <MudItem xs="12" sm="6" md="4">
+                <MudCard Elevation="1" Class="pa-3 rounded-lg h-100" Style="border: 1px solid rgba(255,255,255,0.08); background: rgba(0,0,0,0.05);">
+                    <div class="d-flex justify-space-between align-center mb-2">
+                        <div class="d-flex align-center gap-2">
+                            <MudAvatar Size="Size.Small" Color="@GetServiceColor(res.ResourceType)"><MudIcon Icon="@GetServiceIcon(res.ResourceType)" Size="Size.Small" /></MudAvatar>
+                            <div>
+                                <MudText Typo="Typo.subtitle2" Class="font-weight-bold">@res.Name</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">@res.ResourceType</MudText>
+                            </div>
+                        </div>
+                        <MudChip T="string" Color="@(res.State == "Healthy" || res.State == "Completed" ? Color.Success : Color.Warning)" Size="Size.Small">@res.State</MudChip>
+                    </div>
+                    <div class="d-flex justify-space-between align-center mt-2 pt-2" style="border-top: 1px dashed rgba(255,255,255,0.08); font-size: 0.75rem;">
+                        <span class="font-monospace text-secondary">@res.EndpointUrl</span>
+                        <span class="font-weight-bold">@(res.ReplicaCount > 1 ? $"{res.ReplicaCount} Replicas" : "1 Node")</span>
+                    </div>
+                    <div class="d-flex gap-3 mt-1 text-secondary" style="font-size: 0.72rem;">
+                        <span>RAM: @res.MemoryMb MB</span>
+                        <span>CPU: @res.CpuPercentage.ToString("F1")%</span>
+                    </div>
+                </MudCard>
+            </MudItem>
+        }
+    </MudGrid>
+</MudCard>
+
+<!-- Polly Fault Tolerance & Chaos Testing Simulator -->
+<MudCard Elevation="2" Class="pa-4 mb-6 rounded-lg" Style="border: 1px solid rgba(var(--mud-palette-warning-rgb), 0.3);">
+    <div class="d-flex justify-space-between align-center mb-2">
+        <MudText Typo="Typo.h6" Class="font-weight-bold" Color="Color.Warning">
+            <MudIcon Icon="@Icons.Material.Filled.Bolt" Class="mr-2" />
+            Polly Resilience Pipeline & Fault Injection Simulator
+        </MudText>
+        <MudChip T="string" Color="Color.Warning" Size="Size.Small">AddStandardResilienceHandler</MudChip>
+    </div>
+    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
+        Inject simulated transient latency, downstream outages, or circuit breaker trips to observe automated retry policies, hedging, and OpenTelemetry error logging.
+    </MudText>
+
+    <div class="d-flex gap-4 align-center flex-wrap mb-4">
+        <MudSelect T="string" @bind-Value="_simFaultType" Label="Simulated Fault Type" Dense="true" Style="min-width: 240px;">
+            <MudSelectItem Value="@("High Latency (1200ms)")">High Latency (1200ms) - Polly Timeout / Hedging</MudSelectItem>
+            <MudSelectItem Value="@("HTTP 503 Outage")">HTTP 503 Outage - Circuit Breaker Tripped</MudSelectItem>
+            <MudSelectItem Value="@("Transient Network Drop")">Transient Network Drop - 3x Exponential Backoff</MudSelectItem>
+        </MudSelect>
+
+        <MudSlider T="int" @bind-Value="_simLatency" Min="0" Max="2500" Step="100" Color="Color.Warning" Style="min-width: 200px;">
+            Injected Latency: @(_simLatency)ms
+        </MudSlider>
+
+        <MudSwitch T="bool" @bind-Value="_simTriggerFailure" Color="Color.Error" Label="Trigger Service Failure (503)" />
+
+        <MudButton Variant="Variant.Filled" Color="Color.Warning" StartIcon="@Icons.Material.Filled.BugReport" OnClick="SimulateFaultAsync" Disabled="@_simulating">
+            @if (_simulating) { <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" /> }
+            Inject & Test Polly Pipeline
+        </MudButton>
+    </div>
+
+    @if (!string.IsNullOrEmpty(_simResultMsg))
+    {
+        <MudAlert Severity="@(_simResultSuccess ? Severity.Success : Severity.Error)" Variant="Variant.Filled" Dense="true" Class="rounded-lg">
+            @_simResultMsg
+        </MudAlert>
+    }
+</MudCard>
+
+<!-- OpenTelemetry Trace Waterfall Inspection -->
+<MudCard Elevation="2" Class="pa-4 mb-6 rounded-lg">
+    <div class="d-flex justify-space-between align-center mb-3">
+        <div>
+            <MudText Typo="Typo.h6" Class="font-weight-bold">
+                <MudIcon Icon="@Icons.Material.Filled.ViewStream" Class="mr-2" Color="Color.Info" />
+                OpenTelemetry Distributed Trace Waterfall (ActivitySource)
+            </MudText>
+            <MudText Typo="Typo.caption" Color="Color.Secondary">Correlated Spans exported across frontend, apiservice, and database</MudText>
+        </div>
+        <MudTextField @bind-Value="_traceSearch" Placeholder="Filter by Trace ID or Span..." Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Immediate="true" Margin="Margin.Dense" Style="max-width: 280px;" />
+    </div>
+
+    <MudTable Items="@FilteredTraces" Loading="@loading" Elevation="0" Hover="true">
+        <HeaderContent>
+            <MudTh>Trace ID / Span</MudTh>
+            <MudTh>Service</MudTh>
+            <MudTh>Operation / Activity</MudTh>
+            <MudTh>Latency Waterfall</MudTh>
+            <MudTh>Status</MudTh>
+            <MudTh>Timestamp</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd>
+                <div class="d-flex flex-column font-monospace" style="font-size: 0.75rem;">
+                    <span class="text-primary font-weight-bold">@context.TraceId[..Math.Min(12, context.TraceId.Length)]...</span>
+                    <span class="text-secondary" style="font-size: 0.68rem;">span: @context.SpanId</span>
+                </div>
+            </MudTd>
+            <MudTd>
+                <MudChip T="string" Color="@GetServiceColor(context.ServiceName)" Size="Size.Small">@context.ServiceName</MudChip>
+            </MudTd>
+            <MudTd>
+                <MudText Typo="Typo.subtitle2" Class="font-weight-bold">@context.OperationName</MudText>
+                @if (!string.IsNullOrEmpty(context.ErrorMessage))
+                {
+                    <MudText Typo="Typo.caption" Color="Color.Error">@context.ErrorMessage</MudText>
+                }
+            </MudTd>
+            <MudTd Style="min-width: 140px;">
+                <div class="d-flex align-center gap-2">
+                    <MudProgressLinear Color="@(context.StatusCode >= 400 ? Color.Error : Color.Info)" Value="@Math.Min(100, (int)context.DurationMs)" Rounded="true" Style="height: 8px;" />
+                    <span style="font-size: 0.75rem; font-family: monospace;">@(context.DurationMs)ms</span>
+                </div>
+            </MudTd>
+            <MudTd>
+                <MudChip T="string" Color="@(context.StatusCode < 300 ? Color.Success : Color.Error)" Size="Size.Small">@context.StatusCode</MudChip>
+            </MudTd>
+            <MudTd style="font-size: 0.75rem;">@context.CreatedAt.ToString("HH:mm:ss")</MudTd>
+        </RowTemplate>
+        <PagerContent>
+            <MudTablePager PageSizeOptions="new int[] { 5, 10, 20 }" />
+        </PagerContent>
+    </MudTable>
+</MudCard>
+
+<!-- Distributed Cross-Service Orders Table -->
+<MudCard Elevation="2" Class="pa-4 mb-4 rounded-lg">
+    <div class="d-flex justify-space-between align-center mb-3">
+        <MudText Typo="Typo.h6" Class="font-weight-bold">
+            <MudIcon Icon="@Icons.Material.Filled.AltRoute" Class="mr-2" Color="Color.Primary" />
+            Distributed Cross-Service Transaction Ledger
+        </MudText>
+        <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.Add" OnClick="@(() => _showDispatchDialog = true)">New Transaction</MudButton>
+    </div>
+
+    <MudTable Items="@orders" Loading="@loading" Elevation="0" Hover="true">
+        <HeaderContent>
+            <MudTh>Order #</MudTh>
+            <MudTh>Source Service</MudTh>
+            <MudTh>Target Service</MudTh>
+            <MudTh>Amount</MudTh>
+            <MudTh>Status</MudTh>
+            <MudTh>Processing Latency</MudTh>
+            <MudTh>Correlated Trace ID</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd><code class="mud-typography-subtitle2 font-weight-bold">@context.OrderNumber</code></MudTd>
+            <MudTd><MudChip T="string" Color="Color.Primary" Size="Size.Small" Variant="Variant.Outlined">@context.ServiceOrigin</MudChip></MudTd>
+            <MudTd><MudChip T="string" Color="Color.Secondary" Size="Size.Small" Variant="Variant.Outlined">@context.DestinationService</MudChip></MudTd>
+            <MudTd><MudText Typo="Typo.subtitle2" Color="Color.Success">@context.TotalAmount.ToString("C")</MudText></MudTd>
+            <MudTd><MudChip T="string" Color="Color.Success" Size="Size.Small">@context.Status</MudChip></MudTd>
+            <MudTd><span class="font-monospace">@(context.LatencyMs)ms</span></MudTd>
+            <MudTd><span class="font-monospace text-secondary" style="font-size: 0.72rem;">@context.TraceId[..Math.Min(16, context.TraceId.Length)]...</span></MudTd>
+        </RowTemplate>
+        <PagerContent>
+            <MudTablePager PageSizeOptions="new int[] { 5, 10, 20 }" />
+        </PagerContent>
+    </MudTable>
+</MudCard>
+
+<!-- Dispatch Order Dialog -->
+<MudDialog @bind-Visible="_showDispatchDialog">
+    <TitleContent>
+        <div class="d-flex align-center gap-2">
+            <MudIcon Icon="@Icons.Material.Filled.RocketLaunch" Color="Color.Primary" />
+            <MudText Typo="Typo.h6">Dispatch Distributed Cross-Service Order</MudText>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <div class="d-flex flex-column gap-3">
+            <MudTextField @bind-Value="_newOrderOrigin" Label="Originating Service (Frontend / Gateway)" Required="true" />
+            <MudTextField @bind-Value="_newOrderDest" Label="Destination Microservice (Core API)" Required="true" />
+            <MudNumericField @bind-Value="_newOrderAmount" Label="Order Total ($ USD)" Min="1m" Max="100000m" />
+            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                This transaction triggers an automated OpenTelemetry Activity span and propagates W3C trace headers between distributed service nodes.
+            </MudText>
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _showDispatchDialog = false)">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="DispatchOrderAsync">Dispatch Order</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private List<CloudResourceDto> resources = new();
+    private List<DistributedOrderDto> orders = new();
+    private List<DistributedTraceRecordDto> traces = new();
+    private bool loading = true;
+    private string _traceSearch = "";
+
+    // Chaos simulator
+    private string _simFaultType = "High Latency (1200ms)";
+    private int _simLatency = 1200;
+    private bool _simTriggerFailure = false;
+    private bool _simulating = false;
+    private string _simResultMsg = "";
+    private bool _simResultSuccess = true;
+
+    // Dispatch order modal
+    private bool _showDispatchDialog = false;
+    private string _newOrderOrigin = "webfrontend";
+    private string _newOrderDest = "apiservice";
+    private decimal _newOrderAmount = 285.50m;
+
+    private IEnumerable<DistributedTraceRecordDto> FilteredTraces =>
+        string.IsNullOrWhiteSpace(_traceSearch)
+            ? traces
+            : traces.Where(t => t.TraceId.Contains(_traceSearch, StringComparison.OrdinalIgnoreCase)
+                             || t.ServiceName.Contains(_traceSearch, StringComparison.OrdinalIgnoreCase)
+                             || t.OperationName.Contains(_traceSearch, StringComparison.OrdinalIgnoreCase));
+
+    protected override async Task OnInitializedAsync() => await LoadAllData();
+
+    private async Task LoadAllData()
+    {
+        loading = true;
+        try
+        {
+            var resTask = Http.GetFromJsonAsync<List<CloudResourceDto>>("/api/aspire/resources");
+            var ordTask = Http.GetFromJsonAsync<PagedResultDto<DistributedOrderDto>>("/api/aspire/orders?pageNumber=1&pageSize=50");
+            var trcTask = Http.GetFromJsonAsync<List<DistributedTraceRecordDto>>("/api/aspire/traces");
+
+            await Task.WhenAll(resTask, ordTask, trcTask);
+
+            resources = await resTask ?? new();
+            orders = (await ordTask)?.Items ?? new();
+            traces = await trcTask ?? new();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error connecting to Aspire endpoints: {ex.Message}", Severity.Warning);
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private async Task SimulateFaultAsync()
+    {
+        _simulating = true;
+        _simResultMsg = "";
+        try
+        {
+            var req = new FaultSimulationRequest
+            {
+                FaultType = _simFaultType,
+                LatencyMs = _simLatency,
+                TriggerFailure = _simTriggerFailure
+            };
+
+            var res = await Http.PostAsJsonAsync("/api/aspire/simulate-fault", req);
+            if (res.IsSuccessStatusCode)
+            {
+                _simResultSuccess = true;
+                _simResultMsg = $"✓ Polly Standard Resilience Pipeline successfully absorbed fault '{_simFaultType}'. Response verified in {_simLatency}ms.";
+                Snackbar.Add("Resilience verification passed!", Severity.Success);
+            }
+            else
+            {
+                _simResultSuccess = false;
+                _simResultMsg = $"⚠ Downstream service failure returned HTTP {(int)res.StatusCode}. Polly Circuit Breaker triggered and error span recorded.";
+                Snackbar.Add("Simulated fault captured by telemetry.", Severity.Warning);
+            }
+
+            await LoadAllData();
+        }
+        catch (Exception ex)
+        {
+            _simResultSuccess = false;
+            _simResultMsg = $"Connection exception: {ex.Message}";
+        }
+        finally
+        {
+            _simulating = false;
+        }
+    }
+
+    private async Task DispatchOrderAsync()
+    {
+        try
+        {
+            var req = new CreateDistributedOrderRequest
+            {
+                ServiceOrigin = _newOrderOrigin,
+                DestinationService = _newOrderDest,
+                TotalAmount = _newOrderAmount
+            };
+
+            var res = await Http.PostAsJsonAsync("/api/aspire/orders", req);
+            if (res.IsSuccessStatusCode)
+            {
+                Snackbar.Add($"Distributed Order dispatched! Trace spans recorded.", Severity.Success);
+                _showDispatchDialog = false;
+                await LoadAllData();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Order dispatch failed: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private Color GetServiceColor(string typeOrName) => typeOrName.ToLowerInvariant() switch
+    {
+        "webfrontend" => Color.Primary,
+        "apiservice" => Color.Secondary,
+        "db-migrator" => Color.Dark,
+        "db-sqlite" or "database" => Color.Success,
+        "cache-resilience" or "polly pipeline" => Color.Warning,
+        "otel-collector" or "servicediscovery" => Color.Info,
+        _ => Color.Default
+    };
+
+    private string GetServiceIcon(string type) => type.ToLowerInvariant() switch
+    {
+        "project" => Icons.Material.Filled.Code,
+        "database" => Icons.Material.Filled.Storage,
+        "polly pipeline" => Icons.Material.Filled.Shield,
+        "servicediscovery" => Icons.Material.Filled.Hub,
+        _ => Icons.Material.Filled.Computer
+    };
+}

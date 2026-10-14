@@ -1,0 +1,64 @@
+@page "/admin/features"
+@inject HttpClient Http
+@inject ISnackbar Snackbar
+
+<PageTitle>Feature Management</PageTitle>
+
+<div class="d-flex justify-space-between align-center mb-4">
+    <div>
+        <MudText Typo="Typo.h5" Class="font-weight-bold"><MudIcon Icon="@Icons.Material.Filled.ToggleOn" Class="mr-2" />Feature Flags & Dynamic Toggles</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary">Configure modular feature capabilities across global, tenant, and user scopes</MudText>
+    </div>
+    <MudButton Variant="Variant.Outlined" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Refresh" OnClick="LoadFeatures">Refresh</MudButton>
+</div>
+
+<MudCard Elevation="2">
+    <MudList T="FeatureValueDto">
+        @foreach (var feature in features)
+        {
+            <MudListItem T="FeatureValueDto">
+                <div class="d-flex justify-space-between align-center w-100 py-2">
+                    <div>
+                        <div class="d-flex align-center gap-2">
+                            <MudText Typo="Typo.subtitle1" Class="font-weight-bold">@feature.Name</MudText>
+                            <MudChip T="string" Color="Color.Dark" Size="Size.Small">@feature.ProviderName Scope</MudChip>
+                        </div>
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">@feature.Description</MudText>
+                    </div>
+                    <MudSwitch T="bool" Value="@(feature.Value == "true")" Color="Color.Success" ValueChanged="@((val) => ToggleFeature(feature, val))" />
+                </div>
+            </MudListItem>
+            <MudDivider />
+        }
+    </MudList>
+</MudCard>
+
+@code {
+    private List<FeatureValueDto> features = new();
+
+    protected override async Task OnInitializedAsync() => await LoadFeatures();
+
+    private async Task LoadFeatures()
+    {
+        try
+        {
+            features = await Http.GetFromJsonAsync<List<FeatureValueDto>>("/api/features") ?? new();
+        }
+        catch { }
+    }
+
+    private async Task ToggleFeature(FeatureValueDto feature, bool isEnabled)
+    {
+        var newValue = isEnabled ? "true" : "false";
+        var res = await Http.PutAsJsonAsync($"/api/features/{feature.Name}", new UpdateFeatureRequest(newValue));
+        if (res.IsSuccessStatusCode)
+        {
+            feature.Value = newValue;
+            Snackbar.Add($"Feature '{feature.Name}' updated to {newValue}.", Severity.Success);
+        }
+        else
+        {
+            Snackbar.Add($"Failed to update feature '{feature.Name}'.", Severity.Error);
+        }
+    }
+}

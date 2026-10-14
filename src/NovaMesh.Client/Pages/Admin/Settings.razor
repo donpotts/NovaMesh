@@ -1,0 +1,77 @@
+@page "/admin/settings"
+@inject HttpClient Http
+@inject ISnackbar Snackbar
+
+<PageTitle>System Settings</PageTitle>
+
+<div class="mb-4">
+    <MudText Typo="Typo.h5" Class="font-weight-bold"><MudIcon Icon="@Icons.Material.Filled.Tune" Class="mr-2" />System Configuration Settings</MudText>
+    <MudText Typo="Typo.body2" Color="Color.Secondary">Manage global runtime parameters, security requirements, and notifications</MudText>
+</div>
+
+<MudTabs Elevation="2" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-6">
+    <MudTabPanel Text="General" Icon="@Icons.Material.Filled.Tune">
+        <MudGrid>
+            @foreach (var s in settings.Where(x => x.Category == "General"))
+            {
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="s.Value" Label="@s.Key" HelperText="@s.Description" Variant="Variant.Outlined" Class="mb-3" />
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" OnClick="() => Save(s)">Save Changes</MudButton>
+                </MudItem>
+            }
+        </MudGrid>
+    </MudTabPanel>
+    <MudTabPanel Text="Security" Icon="@Icons.Material.Filled.Security">
+        <MudGrid>
+            @foreach (var s in settings.Where(x => x.Category == "Security"))
+            {
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="s.Value" Label="@s.Key" HelperText="@s.Description" Variant="Variant.Outlined" Class="mb-3" />
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" OnClick="() => Save(s)">Save Changes</MudButton>
+                </MudItem>
+            }
+        </MudGrid>
+    </MudTabPanel>
+    <MudTabPanel Text="Email Delivery" Icon="@Icons.Material.Filled.Email">
+        <MudGrid>
+            @foreach (var s in settings.Where(x => x.Category == "Email"))
+            {
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="s.Value" Label="@s.Key" HelperText="@s.Description" Variant="Variant.Outlined" Class="mb-3" />
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" OnClick="() => Save(s)">Save Changes</MudButton>
+                </MudItem>
+            }
+        </MudGrid>
+    </MudTabPanel>
+    <MudTabPanel Text="Audit & Retention" Icon="@Icons.Material.Filled.History">
+        <MudGrid>
+            @foreach (var s in settings.Where(x => x.Category == "Audit"))
+            {
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="s.Value" Label="@s.Key" HelperText="@s.Description" Variant="Variant.Outlined" Class="mb-3" />
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" OnClick="() => Save(s)">Save Changes</MudButton>
+                </MudItem>
+            }
+        </MudGrid>
+    </MudTabPanel>
+</MudTabs>
+
+@code {
+    private List<AppSettingDto> settings = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            settings = await Http.GetFromJsonAsync<List<AppSettingDto>>("/api/settings") ?? new();
+        }
+        catch { }
+    }
+
+    private async Task Save(AppSettingDto s)
+    {
+        var res = await Http.PutAsJsonAsync("/api/settings", new UpdateSettingRequest(s.Key, s.Value));
+        if (res.IsSuccessStatusCode) Snackbar.Add($"Setting '{s.Key}' updated successfully.", Severity.Success);
+        else Snackbar.Add("Failed to update setting.", Severity.Error);
+    }
+}

@@ -1,0 +1,18 @@
+<Project Sdk="Aspire.AppHost.Sdk/13.6.1">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <NoWarn>$(NoWarn);ASPIRE010</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.AppHost" Version="13.6.1" />
+    <ProjectReference Include="..\NovaMesh.Api\NovaMesh.Api.csproj" />
+    <ProjectReference Include="..\NovaMesh.Client\NovaMesh.Client.csproj" />
+    <ProjectReference Include="..\NovaMesh.DbMigrator\NovaMesh.DbMigrator.csproj" />
+  </ItemGroup>
+
+</Project>

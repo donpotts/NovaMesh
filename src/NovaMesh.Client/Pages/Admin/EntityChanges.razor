@@ -1,0 +1,195 @@
+@page "/admin/entity-changes"
+@using System.Net.Http.Json
+@using NovaMesh.Client.Models
+@inject HttpClient Http
+@inject ISnackbar Snackbar
+
+<PageTitle>Entity Changes &amp; Property Audit Trail</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-6 mb-8">
+    <div class="d-flex flex-column flex-sm-row justify-space-between align-start align-sm-center mb-6 gap-4">
+        <div>
+            <div class="d-flex align-center gap-3">
+                <MudAvatar Color="Color.Tertiary" Rounded="true" Size="Size.Large">
+                    <MudIcon Icon="@Icons.Material.Filled.HistoryEdu" Size="Size.Medium" />
+                </MudAvatar>
+                <div>
+                    <MudText Typo="Typo.h5" Class="fw-bold">Entity Property-Level Audit Trail</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        Granular property change tracking, before/after diffs, user accountability, and multi-tenant change logs.
+                    </MudText>
+                </div>
+            </div>
+        </div>
+        <div class="d-flex gap-2">
+            <MudSelect T="string" Value="@_selectedEntityType" ValueChanged="OnEntityTypeFilterChanged" Label="Filter Entity Type" Dense="true" Margin="Margin.Dense" Style="min-width: 180px;">
+                <MudSelectItem Value="@("")">All Entity Types</MudSelectItem>
+                <MudSelectItem Value="@("Tenant")">Tenant</MudSelectItem>
+                <MudSelectItem Value="@("AppUser")">AppUser</MudSelectItem>
+                <MudSelectItem Value="@("AppSetting")">AppSetting</MudSelectItem>
+                <MudSelectItem Value="@("CmsArticle")">CmsArticle</MudSelectItem>
+            </MudSelect>
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Refresh" OnClick="LoadChangesAsync">
+                Refresh
+            </MudButton>
+        </div>
+    </div>
+
+    @if (_loading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+    }
+    else
+    {
+        <MudPaper Elevation="1">
+            <MudTable Items="@_changes" Hover="true" Elevation="0">
+                <HeaderContent>
+                    <MudTh>Entity Type &amp; ID</MudTh>
+                    <MudTh>Change Type</MudTh>
+                    <MudTh>Modified By</MudTh>
+                    <MudTh>Tenant Scope</MudTh>
+                    <MudTh>Timestamp</MudTh>
+                    <MudTh>Property Diffs</MudTh>
+                    <MudTh Style="text-align:right">Actions</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Entity">
+                        <MudText Typo="Typo.subtitle2" Class="fw-bold">@context.EntityType</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary"><code>@context.EntityId</code></MudText>
+                    </MudTd>
+                    <MudTd DataLabel="Change">
+                        @if (context.ChangeType == "Created")
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Success">Created</MudChip>
+                        }
+                        else if (context.ChangeType == "Updated")
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Info">Updated</MudChip>
+                        }
+                        else
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Error">Deleted</MudChip>
+                        }
+                    </MudTd>
+                    <MudTd DataLabel="Modified By">
+                        <MudText Typo="Typo.body2">@(context.UserName ?? "System")</MudText>
+                    </MudTd>
+                    <MudTd DataLabel="Tenant">
+                        <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">@(context.TenantName ?? "Global Host")</MudChip>
+                    </MudTd>
+                    <MudTd DataLabel="Timestamp">
+                        <MudText Typo="Typo.body2">@context.ChangeTime.ToLocalTime().ToString("g")</MudText>
+                    </MudTd>
+                    <MudTd DataLabel="Diffs">
+                        <div class="d-flex flex-wrap gap-1">
+                            @foreach (var prop in context.PropertyChanges.Take(3))
+                            {
+                                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary">
+                                    @prop.PropertyName: @prop.OriginalValue &rarr; @prop.NewValue
+                                </MudChip>
+                            }
+                            @if (context.PropertyChanges.Count > 3)
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Default">+@(context.PropertyChanges.Count - 3) more</MudChip>
+                            }
+                        </div>
+                    </MudTd>
+                    <MudTd DataLabel="Actions" Style="text-align:right">
+                        <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Difference" OnClick="@(() => ViewDiffModal(context))">
+                            Inspect Diff
+                        </MudButton>
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+        </MudPaper>
+    }
+</MudContainer>
+
+<!-- Diff Inspector Dialog -->
+<MudDialog @bind-Visible="_showDiffDialog">
+    <TitleContent>
+        <div class="d-flex align-center gap-2">
+            <MudIcon Icon="@Icons.Material.Filled.Difference" Color="Color.Primary" />
+            <MudText Typo="Typo.h6">Property Diff Inspector: @_selectedChange?.EntityType</MudText>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <div class="mb-4">
+            <MudText Typo="Typo.caption" Color="Color.Secondary">Entity ID: <code>@_selectedChange?.EntityId</code></MudText>
+            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="d-block">Modified by <strong>@_selectedChange?.UserName</strong> at @_selectedChange?.ChangeTime.ToLocalTime().ToString("F")</MudText>
+        </div>
+
+        <MudTable Items="@(_selectedChange?.PropertyChanges ?? new())" Dense="true" Elevation="0">
+            <HeaderContent>
+                <MudTh>Property</MudTh>
+                <MudTh>Type</MudTh>
+                <MudTh>Original Value</MudTh>
+                <MudTh>New Value</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd><strong>@context.PropertyName</strong></MudTd>
+                <MudTd><MudChip T="string" Size="Size.Small" Variant="Variant.Text">@context.PropertyType</MudChip></MudTd>
+                <MudTd>
+                    <span style="background-color: rgba(239, 68, 68, 0.15); color: #dc2626; padding: 2px 6px; border-radius: 4px; font-family: monospace;">
+                        @(context.OriginalValue ?? "null")
+                    </span>
+                </MudTd>
+                <MudTd>
+                    <span style="background-color: rgba(16, 185, 129, 0.15); color: #059669; padding: 2px 6px; border-radius: 4px; font-family: monospace;">
+                        @(context.NewValue ?? "null")
+                    </span>
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Color="Color.Primary" OnClick="@(() => _showDiffDialog = false)">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private List<EntityChangeDto> _changes = new();
+    private bool _loading = true;
+    private string _selectedEntityType = "";
+    private bool _showDiffDialog = false;
+    private EntityChangeDto? _selectedChange;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadChangesAsync();
+    }
+
+    private async Task LoadChangesAsync()
+    {
+        _loading = true;
+        try
+        {
+            var url = string.IsNullOrWhiteSpace(_selectedEntityType)
+                ? "/api/audit-logs/entity-changes"
+                : $"/api/audit-logs/entity-changes?entityType={Uri.EscapeDataString(_selectedEntityType)}";
+
+            var res = await Http.GetFromJsonAsync<List<EntityChangeDto>>(url);
+            if (res != null) _changes = res;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to load entity changes: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task OnEntityTypeFilterChanged(string newType)
+    {
+        _selectedEntityType = newType;
+        await LoadChangesAsync();
+    }
+
+    private void ViewDiffModal(EntityChangeDto change)
+    {
+        _selectedChange = change;
+        _showDiffDialog = true;
+    }
+}

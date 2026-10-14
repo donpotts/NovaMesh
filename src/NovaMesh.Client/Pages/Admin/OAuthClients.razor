@@ -1,0 +1,208 @@
+@page "/admin/oauth-clients"
+@inject HttpClient Http
+@inject ISnackbar Snackbar
+
+<PageTitle>OpenIddict & OAuth Applications</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="pa-0">
+    <div class="d-flex justify-space-between align-center mb-4 flex-wrap gap-2">
+        <div>
+            <MudText Typo="Typo.h5" Class="font-weight-bold">
+                <MudIcon Icon="@Icons.Material.Filled.AppShortcut" Class="mr-2" Color="Color.Primary" />
+                OpenIddict & OAuth 2.0 Applications
+            </MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                Manage registered Single Page Applications, mobile native clients, and confidential machine services
+            </MudText>
+        </div>
+        <div class="d-flex gap-2">
+            <MudButton Variant="Variant.Outlined" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Refresh" OnClick="LoadClientsAsync">
+                Refresh
+            </MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Security" OnClick="@(() => _showRegisterDialog = true)">
+                Register Client
+            </MudButton>
+        </div>
+    </div>
+
+    @if (_loading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+    }
+    else
+    {
+        <MudTable Items="@_clients" Elevation="1" Hover="true" Dense="true">
+            <HeaderContent>
+                <MudTh>Client Identifier</MudTh>
+                <MudTh>Application Name</MudTh>
+                <MudTh>Client Type</MudTh>
+                <MudTh>Grant Types</MudTh>
+                <MudTh>Allowed Scopes</MudTh>
+                <MudTh>Secret Key</MudTh>
+                <MudTh>Status</MudTh>
+                <MudTh Style="text-align:right">Actions</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Client ID">
+                    <MudText Typo="Typo.subtitle2" Class="font-monospace font-weight-bold">@context.ClientId</MudText>
+                </MudTd>
+                <MudTd DataLabel="Name">
+                    <MudText Typo="Typo.body2">@context.ClientName</MudText>
+                </MudTd>
+                <MudTd DataLabel="Type">
+                    <MudChip T="string" Size="Size.Small" Color="@(context.ClientType == "Confidential" ? Color.Secondary : Color.Primary)" Variant="Variant.Outlined">
+                        @context.ClientType
+                    </MudChip>
+                </MudTd>
+                <MudTd DataLabel="Grants">
+                    <div class="d-flex flex-wrap gap-1" style="max-width: 200px;">
+                        @foreach (var g in context.AllowedGrantTypes.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+                        {
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Default" Class="px-1 py-0">@g</MudChip>
+                        }
+                    </div>
+                </MudTd>
+                <MudTd DataLabel="Scopes">
+                    <MudText Typo="Typo.caption" Class="font-monospace">@context.AllowedScopes</MudText>
+                </MudTd>
+                <MudTd DataLabel="Secret">
+                    <div class="d-flex align-center gap-1">
+                        <MudText Typo="Typo.caption" Class="font-monospace">@context.ClientSecretMasked</MudText>
+                        <MudIconButton Icon="@Icons.Material.Filled.ContentCopy" Size="Size.Small" aria-label="Copy Secret" OnClick="@(() => CopySecret(context))" />
+                    </div>
+                </MudTd>
+                <MudTd DataLabel="Status">
+                    <MudChip T="string" Size="Size.Small" Color="@(context.IsActive ? Color.Success : Color.Error)">
+                        @(context.IsActive ? "Active" : "Revoked")
+                    </MudChip>
+                </MudTd>
+                <MudTd DataLabel="Actions" Style="text-align:right">
+                    <MudIconButton Icon="@Icons.Material.Filled.Key" Size="Size.Small" Color="Color.Warning" aria-label="Regenerate Secret" OnClick="@(() => RegenerateSecretAsync(context))" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" aria-label="Revoke Client" OnClick="@(() => DeleteClientAsync(context))" />
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    }
+</MudContainer>
+
+<!-- Register Client Dialog -->
+<MudDialog @bind-Visible="_showRegisterDialog">
+    <TitleContent>
+        <div class="d-flex align-center gap-2">
+            <MudIcon Icon="@Icons.Material.Filled.Security" Color="Color.Primary" />
+            <MudText Typo="Typo.h6">Register New OAuth 2.0 / OIDC Client</MudText>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <div class="d-flex flex-column gap-3">
+            <MudTextField @bind-Value="_newClient.ClientId" Label="Client ID" Placeholder="e.g. Acme.Portal.Spa" Required="true" />
+            <MudTextField @bind-Value="_newClient.ClientName" Label="Display Name" Placeholder="e.g. Acme Customer Portal" Required="true" />
+            <MudSelect T="string" @bind-Value="_newClient.ClientType" Label="Client Type">
+                <MudSelectItem Value="@("Public SPA")">Public SPA / Mobile (PKCE, No Client Secret)</MudSelectItem>
+                <MudSelectItem Value="@("Confidential")">Confidential Service (Backend / Machine-to-Machine)</MudSelectItem>
+            </MudSelect>
+            <MudTextField @bind-Value="_newClient.AllowedGrantTypes" Label="Grant Types (comma-separated)" Placeholder="e.g. authorization_code, refresh_token" />
+            <MudTextField @bind-Value="_newClient.AllowedScopes" Label="Allowed Scopes" Placeholder="e.g. openid, profile, email, api" />
+            <MudTextField @bind-Value="_newClient.RedirectUris" Label="Redirect URIs" Placeholder="https://localhost:5001/signin-oidc" />
+            <MudTextField @bind-Value="_newClient.PostLogoutRedirectUris" Label="Post-Logout URIs" Placeholder="https://localhost:5001/signout-callback-oidc" />
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _showRegisterDialog = false)">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="RegisterClientAsync">Register Client</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private List<OAuthClientDto> _clients = new();
+    private bool _loading = true;
+    private bool _showRegisterDialog = false;
+    private CreateOAuthClientRequest _newClient = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadClientsAsync();
+    }
+
+    private async Task LoadClientsAsync()
+    {
+        _loading = true;
+        try
+        {
+            var result = await Http.GetFromJsonAsync<List<OAuthClientDto>>("/api/oauth-clients");
+            _clients = result ?? new();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Error loading OAuth clients: " + ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task RegisterClientAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_newClient.ClientId) || string.IsNullOrWhiteSpace(_newClient.ClientName))
+        {
+            Snackbar.Add("Client ID and Name are required.", Severity.Warning);
+            return;
+        }
+
+        try
+        {
+            var res = await Http.PostAsJsonAsync("/api/oauth-clients", _newClient);
+            if (res.IsSuccessStatusCode)
+            {
+                Snackbar.Add("Registered client '" + _newClient.ClientName + "'.", Severity.Success);
+                _showRegisterDialog = false;
+                _newClient = new();
+                await LoadClientsAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Registration failed: " + ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task RegenerateSecretAsync(OAuthClientDto client)
+    {
+        try
+        {
+            var res = await Http.PostAsync("/api/oauth-clients/" + client.Id + "/regenerate-secret", null);
+            if (res.IsSuccessStatusCode)
+            {
+                Snackbar.Add("New secret generated for '" + client.ClientName + "'.", Severity.Success);
+                await LoadClientsAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Secret regeneration failed: " + ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task DeleteClientAsync(OAuthClientDto client)
+    {
+        try
+        {
+            var res = await Http.DeleteAsync("/api/oauth-clients/" + client.Id);
+            if (res.IsSuccessStatusCode)
+            {
+                Snackbar.Add("Revoked client '" + client.ClientName + "'.", Severity.Info);
+                await LoadClientsAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Revoke failed: " + ex.Message, Severity.Error);
+        }
+    }
+
+    private void CopySecret(OAuthClientDto client)
+    {
+        Snackbar.Add("Copied secret token for '" + client.ClientId + "' to clipboard.", Severity.Success);
+    }
+}

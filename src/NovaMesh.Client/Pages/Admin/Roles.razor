@@ -1,0 +1,230 @@
+@page "/admin/roles"
+@inject HttpClient Http
+@inject ISnackbar Snackbar
+
+<PageTitle>Roles & Permissions</PageTitle>
+
+<div class="d-flex justify-space-between align-center mb-6">
+    <div>
+        <MudText Typo="Typo.h5" Class="font-weight-bold">
+            <MudIcon Icon="@Icons.Material.Filled.Security" Class="mr-2" />Roles & Permissions Management
+        </MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary">
+            Configure system security roles, permission grant matrices, and module access policies
+        </MudText>
+    </div>
+    <div class="d-flex gap-2">
+        <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Refresh" OnClick="LoadData">Refresh</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.AddModerator" OnClick="OpenNewRoleDialog">New Role</MudButton>
+    </div>
+</div>
+
+<MudGrid>
+    <!-- Roles Directory Column -->
+    <MudItem xs="12" md="5">
+        <MudCard Elevation="2" Class="rounded-lg">
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <MudText Typo="Typo.h6" Class="font-weight-bold">System Roles (@roles.Count)</MudText>
+                </CardHeaderContent>
+            </MudCardHeader>
+            <MudCardContent Class="pa-0">
+                <MudList T="RoleDto" SelectedValue="selectedRole" SelectedValueChanged="OnSelectRole" Dense="false">
+                    @foreach (var role in roles)
+                    {
+                        var isSelected = selectedRole?.Id == role.Id;
+                        <MudListItem Value="@role" Class="@(isSelected ? "mud-theme-primary mud-elevation-1" : "")">
+                            <div class="d-flex justify-space-between align-center py-1">
+                                <div>
+                                    <div class="d-flex align-center gap-2">
+                                        <MudText Typo="Typo.subtitle1" Class="font-weight-bold">@role.Name</MudText>
+                                        @if (role.Name == "Admin")
+                                        {
+                                            <MudChip T="string" Color="Color.Error" Size="Size.Small" Variant="Variant.Filled">Root Admin</MudChip>
+                                        }
+                                        else if (role.Name == "User")
+                                        {
+                                            <MudChip T="string" Color="Color.Success" Size="Size.Small" Variant="Variant.Outlined">Default</MudChip>
+                                        }
+                                        else
+                                        {
+                                            <MudChip T="string" Color="Color.Warning" Size="Size.Small" Variant="Variant.Outlined">Staff</MudChip>
+                                        }
+                                    </div>
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">@role.Description</MudText>
+                                </div>
+                                <div class="text-right">
+                                    <MudChip T="string" Color="Color.Primary" Size="Size.Small" Variant="Variant.Text">
+                                        @role.Permissions.Count Perms
+                                    </MudChip>
+                                </div>
+                            </div>
+                        </MudListItem>
+                        <MudDivider />
+                    }
+                </MudList>
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
+
+    <!-- Permissions Grant Matrix Column -->
+    <MudItem xs="12" md="7">
+        @if (selectedRole != null)
+        {
+            <MudCard Elevation="2" Class="rounded-lg">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <div class="d-flex justify-space-between align-center flex-wrap gap-2">
+                            <div>
+                                <div class="d-flex align-center gap-2">
+                                    <MudText Typo="Typo.h6" Class="font-weight-bold">Permissions Matrix: @selectedRole.Name</MudText>
+                                    <MudChip T="string" Color="Color.Info" Size="Size.Small">@(workingPermissions.Count) Granted</MudChip>
+                                </div>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">@selectedRole.Description</MudText>
+                            </div>
+                            <MudButton Variant="Variant.Filled" Color="Color.Success" StartIcon="@Icons.Material.Filled.Save" OnClick="SavePermissions" Disabled="@saving">
+                                Save Grants
+                            </MudButton>
+                        </div>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent Class="pa-4">
+                    @foreach (var group in permissionGroups)
+                    {
+                        <MudPaper Elevation="0" Class="pa-4 mb-4 rounded-lg border-solid border mud-border-lines-default" Style="background-color: var(--mud-palette-background-grey);">
+                            <div class="d-flex justify-space-between align-center mb-2">
+                                <MudText Typo="Typo.subtitle2" Class="font-weight-bold" Color="Color.Primary">
+                                    <MudIcon Icon="@GetGroupIcon(group.GroupName)" Size="Size.Small" Class="mr-1" />
+                                    @group.GroupName
+                                </MudText>
+                                <div class="d-flex gap-1">
+                                    <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small" OnClick="() => ToggleGroup(group, true)">Grant All</MudButton>
+                                    <MudButton Variant="Variant.Text" Color="Color.Secondary" Size="Size.Small" OnClick="() => ToggleGroup(group, false)">Revoke</MudButton>
+                                </div>
+                            </div>
+                            <MudGrid>
+                                @foreach (var perm in group.Permissions)
+                                {
+                                    var isChecked = workingPermissions.Contains(perm);
+                                    <MudItem xs="12" sm="6">
+                                        <MudCheckBox T="bool" Value="@isChecked" ValueChanged="@((val) => TogglePermission(perm, val))" Color="Color.Primary" Dense="true">
+                                            <MudText Typo="Typo.body2" Class="font-family-monospace">@perm</MudText>
+                                        </MudCheckBox>
+                                    </MudItem>
+                                }
+                            </MudGrid>
+                        </MudPaper>
+                    }
+                </MudCardContent>
+            </MudCard>
+        }
+        else
+        {
+            <MudPaper Elevation="0" Class="pa-12 rounded-lg text-center border-dashed border mud-border-lines-default">
+                <MudIcon Icon="@Icons.Material.Filled.TouchApp" Size="Size.Large" Color="Color.Secondary" Class="mb-3" />
+                <MudText Typo="Typo.h6" Color="Color.Secondary">Select a role on the left to inspect and configure permission grants.</MudText>
+            </MudPaper>
+        }
+    </MudItem>
+</MudGrid>
+
+@code {
+    private List<RoleDto> roles = new();
+    private List<PermissionGroupDto> permissionGroups = new();
+    private RoleDto? selectedRole;
+    private HashSet<string> workingPermissions = new();
+    private bool saving;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        try
+        {
+            roles = await Http.GetFromJsonAsync<List<RoleDto>>("/api/identity/roles") ?? new();
+            permissionGroups = await Http.GetFromJsonAsync<List<PermissionGroupDto>>("/api/identity/permissions") ?? new();
+
+            if (selectedRole != null)
+            {
+                selectedRole = roles.FirstOrDefault(r => r.Id == selectedRole.Id) ?? roles.FirstOrDefault();
+            }
+            else
+            {
+                selectedRole = roles.FirstOrDefault();
+            }
+
+            if (selectedRole != null)
+            {
+                workingPermissions = new HashSet<string>(selectedRole.Permissions);
+            }
+        }
+        catch { }
+    }
+
+    private void OnSelectRole(RoleDto role)
+    {
+        selectedRole = role;
+        workingPermissions = new HashSet<string>(role.Permissions);
+    }
+
+    private void TogglePermission(string perm, bool granted)
+    {
+        if (granted) workingPermissions.Add(perm);
+        else workingPermissions.Remove(perm);
+    }
+
+    private void ToggleGroup(PermissionGroupDto group, bool grant)
+    {
+        foreach (var p in group.Permissions)
+        {
+            if (grant) workingPermissions.Add(p);
+            else workingPermissions.Remove(p);
+        }
+    }
+
+    private async Task SavePermissions()
+    {
+        if (selectedRole == null) return;
+        saving = true;
+        try
+        {
+            var res = await Http.PutAsJsonAsync($"/api/identity/roles/{selectedRole.Id}/permissions", new UpdateRolePermissionsRequest(workingPermissions.ToList()));
+            if (res.IsSuccessStatusCode)
+            {
+                Snackbar.Add($"Permissions for '{selectedRole.Name}' saved successfully!", Severity.Success);
+                await LoadData();
+            }
+            else
+            {
+                Snackbar.Add("Failed to save role permissions.", Severity.Error);
+            }
+        }
+        catch
+        {
+            Snackbar.Add("Error saving permissions.", Severity.Error);
+        }
+        finally
+        {
+            saving = false;
+        }
+    }
+
+    private void OpenNewRoleDialog()
+    {
+        Snackbar.Add("Create Role modal triggered.", Severity.Info);
+    }
+
+    private string GetGroupIcon(string groupName) => groupName switch
+    {
+        "Identity & RBAC" => Icons.Material.Filled.Group,
+        "Audit Logging" => Icons.Material.Filled.History,
+        "System Settings" => Icons.Material.Filled.Tune,
+        "SaaS Multi-Tenancy" => Icons.Material.Filled.Domain,
+        "Feature Management" => Icons.Material.Filled.ToggleOn,
+        "CMS Kit & Content" => Icons.Material.Filled.Article,
+        _ => Icons.Material.Filled.Security
+    };
+}

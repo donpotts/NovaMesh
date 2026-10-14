@@ -1,0 +1,295 @@
+@page "/admin/files"
+@inject HttpClient Http
+@inject ISnackbar Snackbar
+
+<PageTitle>Enterprise File Management</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="pa-0">
+    <div class="d-flex justify-space-between align-center mb-4 flex-wrap gap-2">
+        <div>
+            <MudText Typo="Typo.h5" Class="font-weight-bold">
+                <MudIcon Icon="@Icons.Material.Filled.Folder" Class="mr-2" Color="Color.Primary" />
+                Enterprise File Management
+            </MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                Secure cloud blob storage, partitioned directories, and document archive
+            </MudText>
+        </div>
+        <div class="d-flex gap-2">
+            <MudButton Variant="Variant.Outlined" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Refresh" OnClick="LoadFilesAsync">
+                Refresh
+            </MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.CloudUpload" OnClick="@(() => _showUploadDialog = true)">
+                Upload File
+            </MudButton>
+        </div>
+    </div>
+
+    <!-- Storage KPI Overview -->
+    <MudGrid Class="mb-4">
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-4 d-flex align-center gap-4" Elevation="1">
+                <MudAvatar Color="Color.Primary" Variant="Variant.Filled">
+                    <MudIcon Icon="@Icons.Material.Filled.FolderShared" />
+                </MudAvatar>
+                <div>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Total Stored Files</MudText>
+                    <MudText Typo="Typo.h6" Class="font-weight-bold">@_files.Count Files</MudText>
+                </div>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-4 d-flex align-center gap-4" Elevation="1">
+                <MudAvatar Color="Color.Success" Variant="Variant.Filled">
+                    <MudIcon Icon="@Icons.Material.Filled.Storage" />
+                </MudAvatar>
+                <div>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Storage Consumed</MudText>
+                    <MudText Typo="Typo.h6" Class="font-weight-bold">@(FormatBytes(_files.Sum(f => f.FileSizeBytes)))</MudText>
+                </div>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-4 d-flex align-center gap-4" Elevation="1">
+                <MudAvatar Color="Color.Info" Variant="Variant.Filled">
+                    <MudIcon Icon="@Icons.Material.Filled.CloudQueue" />
+                </MudAvatar>
+                <div>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Active Cloud Providers</MudText>
+                    <MudText Typo="Typo.h6" Class="font-weight-bold">Local, S3, Azure</MudText>
+                </div>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-4 d-flex align-center gap-4" Elevation="1">
+                <MudAvatar Color="Color.Warning" Variant="Variant.Filled">
+                    <MudIcon Icon="@Icons.Material.Filled.PieChart" />
+                </MudAvatar>
+                <div>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Quota Utilization</MudText>
+                    <MudText Typo="Typo.h6" Class="font-weight-bold">4.8% of 10 GB</MudText>
+                </div>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+
+    <!-- Filters & Search -->
+    <MudCard Elevation="1" Class="pa-4 mb-4">
+        <div class="d-flex gap-4 align-center flex-wrap">
+            <MudTextField @bind-Value="_search" Placeholder="Filter files by name, author, or description..." Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Immediate="true" OnKeyUp="LoadFilesAsync" Class="flex-grow-1" />
+            <MudSelect T="string" @bind-Value="_selectedCategory" Label="Category" Dense="true" Style="min-width: 160px;" SelectedValuesChanged="LoadFilesAsync">
+                <MudSelectItem Value="@("All")">All Categories</MudSelectItem>
+                <MudSelectItem Value="@("Documents")">Documents</MudSelectItem>
+                <MudSelectItem Value="@("Images")">Images</MudSelectItem>
+                <MudSelectItem Value="@("Media")">Media</MudSelectItem>
+                <MudSelectItem Value="@("Backups")">Backups</MudSelectItem>
+            </MudSelect>
+        </div>
+    </MudCard>
+
+    @if (_loading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+    }
+    else
+    {
+        <MudTable Items="@_files" Elevation="1" Hover="true" Dense="true">
+            <HeaderContent>
+                <MudTh>File Name</MudTh>
+                <MudTh>Category</MudTh>
+                <MudTh>Size</MudTh>
+                <MudTh>Storage Provider</MudTh>
+                <MudTh>Uploaded By</MudTh>
+                <MudTh>Date Added</MudTh>
+                <MudTh Style="text-align:right">Actions</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="File Name">
+                    <div class="d-flex align-center gap-2">
+                        <MudIcon Icon="@GetFileIcon(context.FileName)" Color="Color.Primary" Size="Size.Small" />
+                        <div>
+                            <MudText Typo="Typo.subtitle2" Class="font-weight-bold">@context.FileName</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@context.ContentType</MudText>
+                        </div>
+                    </div>
+                </MudTd>
+                <MudTd DataLabel="Category">
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="@GetCategoryColor(context.Category)">
+                        @context.Category
+                    </MudChip>
+                </MudTd>
+                <MudTd DataLabel="Size">
+                    <MudText Typo="Typo.body2" Class="font-monospace">@(FormatBytes(context.FileSizeBytes))</MudText>
+                </MudTd>
+                <MudTd DataLabel="Provider">
+                    <MudChip T="string" Size="Size.Small" Color="Color.Default">
+                        <MudIcon Icon="@Icons.Material.Filled.Cloud" Size="Size.Small" Class="mr-1" />
+                        @context.StorageProvider
+                    </MudChip>
+                </MudTd>
+                <MudTd DataLabel="Uploaded By">
+                    <MudText Typo="Typo.body2">@context.UploadedBy</MudText>
+                </MudTd>
+                <MudTd DataLabel="Date">
+                    <MudText Typo="Typo.body2">@context.CreatedAt.ToLocalTime().ToString("MMM dd, yyyy")</MudText>
+                </MudTd>
+                <MudTd DataLabel="Actions" Style="text-align:right">
+                    <MudIconButton Icon="@Icons.Material.Filled.Download" Size="Size.Small" Color="Color.Info" aria-label="Download" OnClick="@(() => DownloadFile(context))" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" aria-label="Delete" OnClick="@(() => DeleteFileAsync(context))" />
+                </MudTd>
+            </RowTemplate>
+            <NoRecordsContent>
+                <div class="pa-8 text-center">
+                    <MudIcon Icon="@Icons.Material.Filled.FolderOpen" Size="Size.Large" Color="Color.Secondary" Class="mb-2" />
+                    <MudText Typo="Typo.body1" Color="Color.Secondary">No files stored in this category.</MudText>
+                </div>
+            </NoRecordsContent>
+        </MudTable>
+    }
+</MudContainer>
+
+<!-- Upload File Dialog -->
+<MudDialog @bind-Visible="_showUploadDialog">
+    <TitleContent>
+        <div class="d-flex align-center gap-2">
+            <MudIcon Icon="@Icons.Material.Filled.CloudUpload" Color="Color.Primary" />
+            <MudText Typo="Typo.h6">Upload Enterprise File</MudText>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <div class="d-flex flex-column gap-3">
+            <MudTextField @bind-Value="_newFile.FileName" Label="File Name" Placeholder="e.g. Q4_Strategy_Roadmap.pdf" Required="true" />
+            <MudSelect T="string" @bind-Value="_newFile.Category" Label="Category">
+                <MudSelectItem Value="@("Documents")">Documents</MudSelectItem>
+                <MudSelectItem Value="@("Images")">Images</MudSelectItem>
+                <MudSelectItem Value="@("Media")">Media</MudSelectItem>
+                <MudSelectItem Value="@("Backups")">Backups</MudSelectItem>
+            </MudSelect>
+            <MudSelect T="string" @bind-Value="_newFile.StorageProvider" Label="Storage Provider">
+                <MudSelectItem Value="@("Local Disk")">Local Disk Storage</MudSelectItem>
+                <MudSelectItem Value="@("AWS S3")">Amazon Web Services S3</MudSelectItem>
+                <MudSelectItem Value="@("Azure Blob")">Microsoft Azure Blob Storage</MudSelectItem>
+            </MudSelect>
+            <MudTextField @bind-Value="_newFile.Description" Label="Description" Placeholder="Optional file notes or description" />
+            <MudNumericField T="long" @bind-Value="_newFile.FileSizeBytes" Label="File Size (Bytes)" Min="1024" />
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _showUploadDialog = false)">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="UploadFileAsync">Upload</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private List<StoredFileDto> _files = new();
+    private bool _loading = true;
+    private string _search = "";
+    private string _selectedCategory = "All";
+    private bool _showUploadDialog = false;
+    private CreateFileRequest _newFile = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadFilesAsync();
+    }
+
+    private async Task LoadFilesAsync()
+    {
+        _loading = true;
+        try
+        {
+            var url = "/api/files?search=" + Uri.EscapeDataString(_search) + "&category=" + Uri.EscapeDataString(_selectedCategory);
+            var result = await Http.GetFromJsonAsync<List<StoredFileDto>>(url);
+            _files = result ?? new();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Error loading files: " + ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task UploadFileAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_newFile.FileName))
+        {
+            Snackbar.Add("File Name is required.", Severity.Warning);
+            return;
+        }
+
+        try
+        {
+            var res = await Http.PostAsJsonAsync("/api/files", _newFile);
+            if (res.IsSuccessStatusCode)
+            {
+                Snackbar.Add("File '" + _newFile.FileName + "' uploaded successfully.", Severity.Success);
+                _showUploadDialog = false;
+                _newFile = new();
+                await LoadFilesAsync();
+            }
+            else
+            {
+                Snackbar.Add("Failed to upload file.", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Upload failed: " + ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task DeleteFileAsync(StoredFileDto file)
+    {
+        try
+        {
+            var res = await Http.DeleteAsync("/api/files/" + file.Id);
+            if (res.IsSuccessStatusCode)
+            {
+                Snackbar.Add("Deleted '" + file.FileName + "'.", Severity.Info);
+                await LoadFilesAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Delete failed: " + ex.Message, Severity.Error);
+        }
+    }
+
+    private void DownloadFile(StoredFileDto file)
+    {
+        Snackbar.Add("Simulating download of '" + file.FileName + "' from " + file.StorageProvider + "...", Severity.Success);
+    }
+
+    private string FormatBytes(long bytes)
+    {
+        if (bytes < 1024) return bytes + " B";
+        if (bytes < 1024 * 1024) return (bytes / 1024.0).ToString("F1") + " KB";
+        if (bytes < 1024 * 1024 * 1024) return (bytes / (1024.0 * 1024.0)).ToString("F1") + " MB";
+        return (bytes / (1024.0 * 1024.0 * 1024.0)).ToString("F2") + " GB";
+    }
+
+    private string GetFileIcon(string fileName)
+    {
+        var ext = Path.GetExtension(fileName).ToLowerInvariant();
+        return ext switch
+        {
+            ".pdf" => Icons.Material.Filled.PictureAsPdf,
+            ".png" or ".jpg" or ".jpeg" or ".svg" => Icons.Material.Filled.Image,
+            ".zip" or ".bak" or ".tar" or ".gz" => Icons.Material.Filled.Archive,
+            ".doc" or ".docx" or ".txt" => Icons.Material.Filled.Description,
+            _ => Icons.Material.Filled.InsertDriveFile
+        };
+    }
+
+    private Color GetCategoryColor(string cat) => cat switch
+    {
+        "Documents" => Color.Primary,
+        "Images" => Color.Success,
+        "Media" => Color.Secondary,
+        "Backups" => Color.Warning,
+        _ => Color.Default
+    };
+}

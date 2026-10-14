@@ -1,0 +1,357 @@
+@inherits LayoutComponentBase
+@inject AuthService Auth
+@inject ThemeService Theme
+@inject TenantStateService TenantState
+@inject HttpClient Http
+@inject IDialogService DialogService
+@inject NavigationManager Nav
+@implements IDisposable
+
+<MudThemeProvider @key="@($"{Theme.CurrentPrimaryColor}_{Theme.CurrentSecondaryColor}_{Theme.IsDarkMode}")" Theme="@Theme.CreateCustomTheme()" @bind-IsDarkMode="@Theme.IsDarkMode" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<style>
+    .mud-drawer-header {
+        height: auto !important;
+        min-height: 64px !important;
+    }
+</style>
+
+<MudLayout>
+    <MudAppBar Elevation="3" Dense="true" Style="@($"background: linear-gradient(90deg, {(TenantState.CurrentTenant?.PrimaryColor ?? "#4F46E5")} 0%, {(TenantState.CurrentTenant?.SecondaryColor ?? "#06B6D4")} 100%) !important; color: white;")">
+        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@(() => drawerOpen = !drawerOpen)" />
+        
+        <!-- Mobile-first Brand Header with Tenant Logo & Domain -->
+        <div class="d-flex align-center gap-1 gap-sm-2 cursor-pointer ml-1" style="max-width: 110px;" @onclick='() => Nav.NavigateTo("/")'>
+            <MudAvatar Size="Size.Small" Style="font-weight: 800; background: rgba(255,255,255,0.25); color: white; border: 1px solid rgba(255,255,255,0.4); flex-shrink: 0;">
+                @(TenantState.CurrentTenant != null ? TenantState.CurrentTenant.Name[0].ToString().ToUpper() : "N")
+            </MudAvatar>
+            <div class="d-flex flex-column overflow-hidden">
+                <div class="d-flex align-center gap-1">
+                    <MudText Typo="Typo.subtitle1" Class="font-weight-bold text-truncate" Style="line-height: 1.1; font-size: 0.90rem; max-width: 75px;">
+                        @(TenantState.CurrentTenant != null ? TenantState.CurrentTenant.Name : "NovaMesh")
+                    </MudText>
+                    @if (TenantState.CurrentTenant != null)
+                    {
+                        <span class="d-none d-md-inline px-1 py-0" style="background: rgba(0,0,0,0.25); border-radius: 4px; font-size: 0.65rem; font-family: monospace;">
+                            @TenantState.CurrentTenant.CustomDomain
+                        </span>
+                    }
+                </div>
+                <MudText Typo="Typo.caption" Color="Color.Inherit" Class="d-none d-md-block text-truncate" Style="opacity: 0.9; max-width: 250px; font-size: 0.68rem; color: #cbd5e1 !important;">
+                    @(TenantState.CurrentTenant != null ? TenantState.CurrentTenant.Slogan : "My Platform - Enterprise Freedom")
+                </MudText>
+            </div>
+        </div>
+
+        <MudChip T="string" Size="Size.Small" Variant="Variant.Filled" Class="ml-2 d-none d-lg-inline-flex font-weight-bold" Style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3);">
+            @(TenantState.CurrentTenant != null ? TenantState.CurrentTenant.EditionName + " Tier" : "Host Root")
+        </MudChip>
+
+        <MudSpacer />
+
+        <!-- 1. Dedicated Top Nav Tenant Switcher (Mobile First) -->
+        <MudMenu Dense="true" AnchorOrigin="Origin.BottomCenter" TransformOrigin="Origin.TopCenter" Class="mr-1">
+            <ActivatorContent>
+                <MudIconButton Icon="@Icons.Material.Filled.Domain" Color="Color.Inherit" Size="Size.Small" Class="d-inline-flex d-sm-none" />
+                <MudButton Variant="Variant.Outlined" Color="Color.Inherit" Size="Size.Small"
+                           StartIcon="@Icons.Material.Filled.Domain"
+                           EndIcon="@Icons.Material.Filled.ArrowDropDown"
+                           Class="px-2 d-none d-sm-inline-flex"
+                           Style="border-color: rgba(255,255,255,0.4); text-transform: none;">
+                    <span>@(TenantState.CurrentTenant != null ? TenantState.CurrentTenant.Name : "Host (Global)")</span>
+                </MudButton>
+            </ActivatorContent>
+            <ChildContent>
+                <div class="pa-2" style="min-width: 260px;">
+                    <MudText Typo="Typo.caption" Class="px-2 font-weight-bold text-secondary">ACTIVE TENANT CONTEXT</MudText>
+                    <MudMenuItem Icon="@Icons.Material.Filled.Public" OnClick="@(() => SwitchTenant(null))">
+                        <div class="d-flex justify-space-between align-center w-100">
+                            <div>
+                                <MudText Typo="Typo.body2" Class="@(TenantState.CurrentTenant == null ? "font-weight-bold text-primary" : "")">Host / Global Root</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">System Master Database</MudText>
+                            </div>
+                            @if (TenantState.CurrentTenant == null) { <MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" Color="Color.Primary" /> }
+                        </div>
+                    </MudMenuItem>
+                    <MudDivider Class="my-1" />
+                    @foreach (var t in TenantState.Tenants)
+                    {
+                        <MudMenuItem OnClick="@(() => SwitchTenant(t))">
+                            <div class="d-flex align-center justify-space-between w-100 gap-2">
+                                <div class="d-flex align-center gap-2">
+                                    <div style="@($"width: 12px; height: 12px; border-radius: 50%; background-color: {t.PrimaryColor}; flex-shrink: 0;")"></div>
+                                    <div>
+                                        <MudText Typo="Typo.body2" Class="@(TenantState.CurrentTenant?.Id == t.Id ? "font-weight-bold text-primary" : "")">@t.Name</MudText>
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">@t.EditionName Tier • @t.Slogan</MudText>
+                                    </div>
+                                </div>
+                                @if (TenantState.CurrentTenant?.Id == t.Id)
+                                {
+                                    <MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" Color="Color.Primary" />
+                                }
+                            </div>
+                        </MudMenuItem>
+                    }
+                    <MudDivider Class="my-1" />
+                    <MudMenuItem Icon="@Icons.Material.Filled.ColorLens" OnClick='() => Nav.NavigateTo("/admin/tenants")'>
+                        <MudText Typo="Typo.caption">Manage Tenant Branding</MudText>
+                    </MudMenuItem>
+                </div>
+            </ChildContent>
+        </MudMenu>
+
+        <!-- Blog Hub Quick Link -->
+        <MudButton Variant="Variant.Text" Color="Color.Inherit" StartIcon="@Icons.Material.Filled.RssFeed" OnClick='() => Nav.NavigateTo("/blog")' Class="d-none d-md-inline-flex mr-1">Blog</MudButton>
+
+        @if (Auth.IsAuthenticated)
+        {
+            <!-- Notification Bell with Snug Overlap Badge & Dropdown -->
+            <MudMenu Dense="true" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
+                <ActivatorContent>
+                    <div class="position-relative d-inline-flex align-center justify-center mr-1">
+                        <MudIconButton Icon="@Icons.Material.Filled.Notifications" Color="Color.Inherit" />
+                        <span class="d-flex align-center justify-center font-weight-bold"
+                              style="position: absolute; top: 6px; right: 8px; width: 17px; height: 17px; border-radius: 50%; background-color: #EF4444; color: white; font-size: 0.65rem; line-height: 1; border: 2px solid white; box-shadow: 0 1px 3px rgba(0,0,0,0.4); pointer-events: none; z-index: 2;">
+                            3
+                        </span>
+                    </div>
+                </ActivatorContent>
+                <ChildContent>
+                    <div class="pa-3" style="min-width: 300px;">
+                        <div class="d-flex justify-space-between align-center mb-2">
+                            <MudText Typo="Typo.subtitle2" Class="fw-bold">System Notifications</MudText>
+                            <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" OnClick='() => Nav.NavigateTo("/admin/notifications")'>View All</MudButton>
+                        </div>
+                        <MudDivider Class="mb-2" />
+                        <MudMenuItem OnClick='() => Nav.NavigateTo("/admin/health")'>
+                            <div class="d-flex align-start gap-2">
+                                <MudIcon Icon="@Icons.Material.Filled.MonitorHeart" Color="Color.Success" Size="Size.Small" Class="mt-1" />
+                                <div>
+                                    <MudText Typo="Typo.body2" Class="fw-bold">Subsystems Operational</MudText>
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">Database 0ms • Ollama cloud ready</MudText>
+                                </div>
+                            </div>
+                        </MudMenuItem>
+                        <MudMenuItem OnClick='() => Nav.NavigateTo("/admin/background-jobs")'>
+                            <div class="d-flex align-start gap-2">
+                                <MudIcon Icon="@Icons.Material.Filled.Schedule" Color="Color.Info" Size="Size.Small" Class="mt-1" />
+                                <div>
+                                    <MudText Typo="Typo.body2" Class="fw-bold">AI Vector Index Synchronized</MudText>
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">Worker executed in 1250ms</MudText>
+                                </div>
+                            </div>
+                        </MudMenuItem>
+                        <MudMenuItem OnClick='() => Nav.NavigateTo("/admin/entity-changes")'>
+                            <div class="d-flex align-start gap-2">
+                                <MudIcon Icon="@Icons.Material.Filled.Difference" Color="Color.Tertiary" Size="Size.Small" Class="mt-1" />
+                                <div>
+                                    <MudText Typo="Typo.body2" Class="fw-bold">Tenant Branding Updated</MudText>
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">Cyberdyne Systems colors modified</MudText>
+                                </div>
+                            </div>
+                        </MudMenuItem>
+                    </div>
+                </ChildContent>
+            </MudMenu>
+        }
+
+        <!-- Dark / Light Theme Toggle -->
+        <MudIconButton Icon="@(Theme.IsDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
+                       Color="Color.Inherit"
+                       OnClick="@(() => Theme.ToggleTheme())"
+                       Class="d-none d-sm-inline-flex mr-1" />
+
+        <!-- User Profile Dropdown or Sign In / Register -->
+        @if (Auth.IsAuthenticated)
+        {
+            <MudMenu Dense="true" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
+                <ActivatorContent>
+                    <MudChip T="string" Size="Size.Medium" Icon="@Icons.Material.Filled.AccountCircle" IconColor="Color.Primary" Class="cursor-pointer font-weight-bold" Style="background: #ffffff !important; color: #0f172a !important; border: 1px solid rgba(255, 255, 255, 0.8); box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);">
+                        <span class="d-none d-sm-inline" style="color: #0f172a !important;">@Auth.CurrentUser?.UserName</span>
+                        <span class="d-inline d-sm-none" style="color: #0f172a !important;">@@</span>
+                    </MudChip>
+                </ActivatorContent>
+                <ChildContent>
+                    <div class="px-3 py-2 border-b" style="min-width: 220px;">
+                        <MudText Typo="Typo.subtitle2" Class="font-weight-bold">@Auth.CurrentUser?.FullName</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">@@@Auth.CurrentUser?.UserName • @Auth.CurrentUser?.Email</MudText>
+                        <div class="d-flex align-center gap-1 mt-2">
+                            <MudChip T="string" Size="Size.Small" Color="Color.Dark" Variant="Variant.Text">
+                                @string.Join(", ", Auth.CurrentUser?.Roles ?? new())
+                            </MudChip>
+                            <MudChip T="string" Size="Size.Small" Style="@($"background: {(TenantState.CurrentTenant != null ? TenantState.CurrentTenant.PrimaryColor : "#4F46E5")}; color: white; font-weight: 600;")">
+                                @(TenantState.CurrentTenant != null ? TenantState.CurrentTenant.NormalizedName : "HOST")
+                            </MudChip>
+                        </div>
+                    </div>
+                    <MudMenuItem Icon="@Icons.Material.Filled.Person" OnClick='() => Nav.NavigateTo("/account/profile")'>My Profile</MudMenuItem>
+                    <MudMenuItem Icon="@Icons.Material.Filled.Brush" OnClick='() => Nav.NavigateTo("/admin/tenants")'>Tenant Branding</MudMenuItem>
+                    <MudMenuItem Icon="@Icons.Material.Filled.Settings" OnClick='() => Nav.NavigateTo("/admin/settings")'>Settings</MudMenuItem>
+                    <MudDivider />
+                    <MudMenuItem Icon="@Icons.Material.Filled.Logout" OnClick="Logout">Sign Out</MudMenuItem>
+                </ChildContent>
+            </MudMenu>
+        }
+        else
+        {
+            <div class="d-flex align-center gap-1">
+                <MudButton Variant="Variant.Filled" Color="Color.Secondary" Size="Size.Small" OnClick="OpenLogin" StartIcon="@Icons.Material.Filled.Login" Class="px-2" Style="white-space: nowrap; font-size: 0.75rem; flex-shrink: 0;">Sign In</MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Inherit" Size="Size.Small" OnClick="OpenRegister" StartIcon="@Icons.Material.Filled.PersonAdd" Class="px-2 d-none d-sm-inline-flex" Style="white-space: nowrap; font-size: 0.75rem; border-color: rgba(255,255,255,0.6); color: white;">Register</MudButton>
+            </div>
+        }
+    </MudAppBar>
+
+    <MudDrawer @bind-Open="drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="1" Variant="DrawerVariant.Responsive">
+        <div class="d-flex flex-column align-start gap-1 py-3 px-3 mb-2" style="@($"border-left: 5px solid {(TenantState.CurrentTenant?.PrimaryColor ?? "#4F46E5")}; background: rgba(0,0,0,0.08); border-bottom: 1px solid rgba(255,255,255,0.08); width: 100%; box-sizing: border-box;")">
+            <div class="d-flex align-center gap-2 w-100">
+                <MudAvatar Size="Size.Medium" Style="@($"background: linear-gradient(135deg, {(TenantState.CurrentTenant?.PrimaryColor ?? "#4F46E5")} 0%, {(TenantState.CurrentTenant?.SecondaryColor ?? "#06B6D4")} 100%); color: white; font-weight: bold; border: 1px solid rgba(255,255,255,0.3); flex-shrink: 0;")">
+                    @(TenantState.CurrentTenant != null ? TenantState.CurrentTenant.Name[0].ToString().ToUpper() : "H")
+                </MudAvatar>
+                <div class="overflow-hidden">
+                    <MudText Typo="Typo.subtitle1" Class="font-weight-bold text-truncate" Style="line-height: 1.1; font-size: 0.95rem;">
+                        @(TenantState.CurrentTenant != null ? TenantState.CurrentTenant.Name : "NovaMesh")
+                    </MudText>
+                    <div class="d-flex align-center gap-1 mt-1">
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Filled" Style="@($"background: {(TenantState.CurrentTenant?.PrimaryColor ?? "#4F46E5")}; color: #ffffff !important; height: 18px; font-size: 0.65rem; font-weight: 600;")">
+                            @(TenantState.CurrentTenant != null ? TenantState.CurrentTenant.EditionName : "System")
+                        </MudChip>
+                        <span style="font-size: 0.65rem; color: #94a3b8; font-family: monospace;">@(TenantState.CurrentTenant?.NormalizedName ?? "HOST")</span>
+                    </div>
+                </div>
+            </div>
+            @if (TenantState.CurrentTenant != null)
+            {
+                <MudText Typo="Typo.caption" Class="text-truncate mt-1" Style="font-size: 0.72rem; line-height: 1.2; color: #94a3b8 !important;">
+                    @TenantState.CurrentTenant.Slogan
+                </MudText>
+                <div class="d-flex align-center justify-space-between w-100 mt-2 pt-1 mb-1" style="border-top: 1px solid rgba(255,255,255,0.12);">
+                    <div class="d-flex align-center gap-1">
+                        <MudTooltip Text="@($"Primary: {TenantState.CurrentTenant.PrimaryColor}")">
+                            <div style="@($"width: 10px; height: 10px; border-radius: 50%; background-color: {TenantState.CurrentTenant.PrimaryColor};")"></div>
+                        </MudTooltip>
+                        <MudTooltip Text="@($"Secondary: {TenantState.CurrentTenant.SecondaryColor}")">
+                            <div style="@($"width: 10px; height: 10px; border-radius: 50%; background-color: {TenantState.CurrentTenant.SecondaryColor};")"></div>
+                        </MudTooltip>
+                        <MudTooltip Text="@($"Accent: {TenantState.CurrentTenant.AccentColor}")">
+                            <div style="@($"width: 10px; height: 10px; border-radius: 50%; background-color: {TenantState.CurrentTenant.AccentColor};")"></div>
+                        </MudTooltip>
+                    </div>
+                    <span style="font-size: 0.68rem; color: #94a3b8; font-family: monospace;">@TenantState.CurrentTenant.CustomDomain</span>
+                </div>
+            }
+        </div>
+        <MudNavMenu>
+            @if (!Auth.IsAuthenticated)
+            {
+                <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">Home</MudNavLink>
+                <MudNavLink Href="/aspire/telemetry" Icon="@Icons.Material.Filled.Speed">Aspire Telemetry & Resilience</MudNavLink>
+                <MudNavLink Href="http://localhost:5000/scalar/v1" Target="_blank" Icon="@Icons.Material.Filled.Api">Scalar API Docs <MudIcon Icon="@Icons.Material.Filled.OpenInNew" Size="Size.Small" Class="ml-1" /></MudNavLink>
+
+                <MudDivider Class="my-3" />
+                <div class="pa-3 mx-2 rounded-lg" style="background: rgba(var(--mud-palette-primary-rgb), 0.08); border: 1px dashed var(--mud-palette-primary);">
+                    <MudText Typo="Typo.subtitle2" Class="font-weight-bold mb-1" Color="Color.Primary">
+                        <MudIcon Icon="@Icons.Material.Filled.Lock" Size="Size.Small" Class="mr-1" />
+                        Platform Access
+                    </MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary" Class="d-block mb-3">
+                        Sign in to access AI Agents, Enterprise Modules, and Admin Control.
+                    </MudText>
+                    <div class="d-flex flex-column gap-2">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" FullWidth="true" OnClick="OpenLogin" StartIcon="@Icons.Material.Filled.Login">
+                            Sign In
+                        </MudButton>
+                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" FullWidth="true" OnClick="OpenRegister" StartIcon="@Icons.Material.Filled.PersonAdd">
+                            Register
+                        </MudButton>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Dashboard">Dashboard</MudNavLink>
+                
+                <MudNavGroup Title="AI Suite & Agents" Icon="@Icons.Material.Filled.SmartToy" Expanded="true">
+                    <MudNavLink Href="/ai/agent" Icon="@Icons.Material.Filled.Psychology">AI Agent Workbench</MudNavLink>
+                    <MudNavLink Href="/ai/knowledge" Icon="@Icons.Material.Filled.LibraryBooks">Knowledge Base & RAG</MudNavLink>
+                </MudNavGroup>
+
+            <MudNavGroup Title="Aspire & Cloud Ops" Icon="@Icons.Material.Filled.Cloud" Expanded="true">
+                <MudNavLink Href="/aspire/telemetry" Icon="@Icons.Material.Filled.Speed">Distributed Telemetry & Resilience</MudNavLink>
+            </MudNavGroup>
+
+                <MudNavGroup Title="Identity & Tenants" Icon="@Icons.Material.Filled.AdminPanelSettings" Expanded="true">
+                    <MudNavLink Href="/admin/users" Icon="@Icons.Material.Filled.Group">Users & RBAC</MudNavLink>
+                    <MudNavLink Href="/admin/roles" Icon="@Icons.Material.Filled.Security">Roles & Permissions</MudNavLink>
+                    <MudNavLink Href="/admin/tenants" Icon="@Icons.Material.Filled.Domain">Tenants & Branding</MudNavLink>
+                    <MudNavLink Href="/admin/features" Icon="@Icons.Material.Filled.ToggleOn">Feature Flags</MudNavLink>
+                    <MudNavLink Href="/admin/oauth-clients" Icon="@Icons.Material.Filled.AppShortcut">OAuth Applications</MudNavLink>
+                </MudNavGroup>
+
+                <MudNavGroup Title="Enterprise Modules" Icon="@Icons.Material.Filled.Extension" Expanded="true">
+                    <MudNavLink Href="/admin/files" Icon="@Icons.Material.Filled.Folder">File Management</MudNavLink>
+                    <MudNavLink Href="/admin/notifications" Icon="@Icons.Material.Filled.NotificationsActive">Notification Center</MudNavLink>
+                    <MudNavLink Href="/admin/templates" Icon="@Icons.Material.Filled.Email">Text Templates</MudNavLink>
+                    <MudNavLink Href="/admin/languages" Icon="@Icons.Material.Filled.Translate">Localization</MudNavLink>
+                    <MudNavLink Href="/admin/audit-logs" Icon="@Icons.Material.Filled.History">Audit Trail Logs</MudNavLink>
+                    <MudNavLink Href="/admin/settings" Icon="@Icons.Material.Filled.Tune">System Settings</MudNavLink>
+                </MudNavGroup>
+
+                <MudNavGroup Title="System & Operations" Icon="@Icons.Material.Filled.SettingsSuggest" Expanded="true">
+                    <MudNavLink Href="/admin/background-jobs" Icon="@Icons.Material.Filled.Schedule">Background Jobs Queue</MudNavLink>
+                    <MudNavLink Href="/admin/entity-changes" Icon="@Icons.Material.Filled.HistoryEdu">Entity Property Diffs</MudNavLink>
+                    <MudNavLink Href="/admin/health" Icon="@Icons.Material.Filled.MonitorHeart">Health & Diagnostics</MudNavLink>
+                </MudNavGroup>
+
+                <MudDivider Class="my-2" />
+                <MudNavLink Href="/account/profile" Icon="@Icons.Material.Filled.ManageAccounts">My Profile</MudNavLink>
+                <MudNavLink Href="http://localhost:5000/scalar/v1" Target="_blank" Icon="@Icons.Material.Filled.Api">Scalar API Docs <MudIcon Icon="@Icons.Material.Filled.OpenInNew" Size="Size.Small" Class="ml-1" /></MudNavLink>
+            }
+
+            <div class="px-4 py-2 d-flex d-sm-none align-center justify-space-between mt-2" style="border-top: 1px solid rgba(255,255,255,0.08);">
+                <div class="d-flex align-center gap-2">
+                    <MudIcon Icon="@(Theme.IsDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)" Size="Size.Small" Color="Color.Secondary" />
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Dark Mode</MudText>
+                </div>
+                <MudSwitch T="bool" Value="@Theme.IsDarkMode" ValueChanged="@((bool v) => Theme.ToggleTheme())" Color="Color.Primary" />
+            </div>
+        </MudNavMenu>
+    </MudDrawer>
+
+    <MudMainContent Class="pt-10 px-2 px-sm-4">
+        <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="my-2 my-sm-4 px-1 px-sm-3">
+            @Body
+        </MudContainer>
+    </MudMainContent>
+</MudLayout>
+
+@code {
+    private bool drawerOpen = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Auth.OnAuthStateChanged += StateHasChanged;
+        Theme.OnThemeChanged += StateHasChanged;
+        TenantState.OnTenantChanged += StateHasChanged;
+
+        await TenantState.InitializeAsync(Http, Theme);
+    }
+
+    public void Dispose()
+    {
+        Auth.OnAuthStateChanged -= StateHasChanged;
+        Theme.OnThemeChanged -= StateHasChanged;
+        TenantState.OnTenantChanged -= StateHasChanged;
+    }
+
+    private async Task SwitchTenant(TenantDto? tenant)
+    {
+        await TenantState.SelectTenantAsync(tenant, Theme);
+    }
+
+    private async Task OpenLogin() => await DialogService.ShowAsync<LoginDialog>("Authentication", new DialogParameters { ["InitialTab"] = 0 });
+    private async Task OpenRegister() => await DialogService.ShowAsync<LoginDialog>("Authentication", new DialogParameters { ["InitialTab"] = 1 });
+    private void Logout() => Auth.Logout();
+}

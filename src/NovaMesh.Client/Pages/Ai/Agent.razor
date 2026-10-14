@@ -1,0 +1,350 @@
+@page "/ai/agent"
+@inject HttpClient Http
+@inject ISnackbar Snackbar
+
+<PageTitle>Autonomous AI Agent & RAG Workbench</PageTitle>
+
+<!-- Header Banner -->
+<div class="d-flex justify-space-between align-center mb-4 flex-wrap gap-4">
+    <div>
+        <div class="d-flex align-center gap-2 mb-1">
+            <MudChip T="string" Color="Color.Primary" Size="Size.Small" Variant="Variant.Filled">AUTONOMOUS AGENT RUNTIME</MudChip>
+            <MudChip T="string" Color="Color.Success" Size="Size.Small" Variant="Variant.Outlined">@activeModel</MudChip>
+            <MudText Typo="Typo.h5" Class="font-weight-bold">Autonomous AI Agent Workbench</MudText>
+        </div>
+        <MudText Typo="Typo.body2" Color="Color.Secondary">
+            Multi-persona reasoning agent executing grounded vector RAG retrieval, system health audits, and code synthesis
+        </MudText>
+    </div>
+    <div class="d-flex gap-2 align-center">
+        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Add" OnClick="StartNewConversation">New Session</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Refresh" OnClick="LoadMessages">Refresh</MudButton>
+    </div>
+</div>
+
+<MudGrid>
+    <!-- Left Configuration & Persona Column -->
+    <MudItem xs="12" md="4" lg="3">
+        <!-- Persona Selection Card -->
+        <MudCard Elevation="2" Class="pa-4 mb-4 rounded-xl">
+            <MudText Typo="Typo.subtitle2" Class="font-weight-bold mb-3" Color="Color.Primary">
+                <MudIcon Icon="@Icons.Material.Filled.Psychology" Size="Size.Small" Class="mr-1" />
+                Select Agent Persona
+            </MudText>
+            <MudRadioGroup T="string" @bind-Value="activePersona" Class="d-flex flex-column gap-2">
+                <MudRadio Value="@("Solution Architect")" Color="Color.Primary" Dense="true">
+                    <div>
+                        <MudText Typo="Typo.body2" Class="font-weight-bold">Solution Architect</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">My Platform Clean Architecture & DDD</MudText>
+                    </div>
+                </MudRadio>
+                <MudRadio Value="@("Code Synthesizer")" Color="Color.Secondary" Dense="true">
+                    <div>
+                        <MudText Typo="Typo.body2" Class="font-weight-bold">Code Synthesizer</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">C# Minimal APIs & MudBlazor</MudText>
+                    </div>
+                </MudRadio>
+                <MudRadio Value="@("Security & DevOps")" Color="Color.Error" Dense="true">
+                    <div>
+                        <MudText Typo="Typo.body2" Class="font-weight-bold">Security & DevOps</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">RBAC, Query Filters & Audits</MudText>
+                    </div>
+                </MudRadio>
+                <MudRadio Value="@("Domain Expert")" Color="Color.Warning" Dense="true">
+                    <div>
+                        <MudText Typo="Typo.body2" Class="font-weight-bold">Domain Expert</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Multi-Tenant & CMS Operations</MudText>
+                    </div>
+                </MudRadio>
+            </MudRadioGroup>
+        </MudCard>
+
+        <!-- Model & Runtime Parameters Card -->
+        <MudCard Elevation="2" Class="pa-4 mb-4 rounded-xl">
+            <MudText Typo="Typo.subtitle2" Class="font-weight-bold mb-3" Color="Color.Primary">
+                <MudIcon Icon="@Icons.Material.Filled.Tune" Size="Size.Small" Class="mr-1" />
+                Model & Execution Pipeline
+            </MudText>
+            
+            <MudSelect T="string" @bind-Value="activeModel" Label="Inference Model" Variant="Variant.Outlined" Margin="Margin.Dense" Class="mb-3">
+                <MudSelectItem Value="@("gemma4:31b")">gemma4:31b (Cloud)</MudSelectItem>
+                <MudSelectItem Value="@("gpt-oss:120b")">gpt-oss:120b (Cloud)</MudSelectItem>
+                <MudSelectItem Value="@("gpt-oss:20b")">gpt-oss:20b (Cloud)</MudSelectItem>
+                <MudSelectItem Value="@("nemotron-3-nano:30b")">nemotron-3-nano:30b (Cloud)</MudSelectItem>
+                <MudSelectItem Value="@("nemotron-3-super")">nemotron-3-super (Cloud)</MudSelectItem>
+                <MudSelectItem Value="@("nemotron-3-ultra")">nemotron-3-ultra (Cloud)</MudSelectItem>
+                <MudSelectItem Value="@("fullstack-platform-14b:latest")">fullstack-platform-14b (Local)</MudSelectItem>
+            </MudSelect>
+
+            <MudSwitch T="bool" @bind-Value="enableRag" Color="Color.Success" Label="Vector RAG Context" Class="mb-1" />
+            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="d-block mb-3 pl-8">Augment prompt with cosine-similarity citations</MudText>
+
+            <MudSwitch T="bool" @bind-Value="enableAutonomousTools" Color="Color.Primary" Label="Autonomous Tool Calling" Class="mb-1" />
+            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="d-block mb-3 pl-8">Execute telemetry tools & component generators</MudText>
+        </MudCard>
+
+        <!-- Suggested Inquiries -->
+        <MudCard Elevation="2" Class="pa-4 rounded-xl">
+            <MudText Typo="Typo.subtitle2" Class="font-weight-bold mb-3" Color="Color.Primary">
+                <MudIcon Icon="@Icons.Material.Filled.TipsAndUpdates" Size="Size.Small" Class="mr-1" />
+                Prompt Templates
+            </MudText>
+            <div class="d-flex flex-column gap-2">
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" Class="text-left justify-start" OnClick='() => SetPrompt("How does My Platform modular architecture structure Domain vs Contracts?")'>
+                    Domain vs Contracts
+                </MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Size="Size.Small" Class="text-left justify-start" OnClick='() => SetPrompt("Generate a typed MudBlazor tenant selector component with reactive theme state")'>
+                    Generate MudBlazor UI
+                </MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" Class="text-left justify-start" OnClick='() => SetPrompt("Audit tenant security isolation filters and verify system health")'>
+                    Audit Security Filters
+                </MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Warning" Size="Size.Small" Class="text-left justify-start" OnClick='() => SetPrompt("Explain the vector chunking and cosine similarity RAG pipeline")'>
+                    Vector RAG Pipeline
+                </MudButton>
+            </div>
+        </MudCard>
+    </MudItem>
+
+    <!-- Right Chat Stream Column -->
+    <MudItem xs="12" md="8" lg="9">
+        <MudCard Elevation="2" Class="rounded-xl d-flex flex-column" Style="height: 720px;">
+            <!-- Message List Scroll View -->
+            <div class="flex-grow-1 pa-4 overflow-y-auto" style="display: flex; flex-direction: column; gap: 16px;">
+                @if (messages.Count == 0)
+                {
+                    <div class="d-flex flex-column align-center justify-center h-100 text-center py-12">
+                        <MudAvatar Color="Color.Primary" Size="Size.Large" Class="mb-3"><MudIcon Icon="@Icons.Material.Filled.SmartToy" Size="Size.Large" /></MudAvatar>
+                        <MudText Typo="Typo.h6" Class="font-weight-bold">Autonomous Agent Ready</MudText>
+                        <MudText Typo="Typo.body2" Color="Color.Secondary" Style="max-width: 480px;">
+                            Select a persona or prompt template on the left, or submit a technical question below to trigger vector RAG retrieval and tool calling.
+                        </MudText>
+                    </div>
+                }
+
+                @foreach (var msg in messages)
+                {
+                    @if (msg.Role == "user")
+                    {
+                        <!-- User Message Bubble -->
+                        <div class="d-flex justify-end">
+                            <MudPaper Elevation="1" Class="pa-4 rounded-xl mud-theme-primary" Style="max-width: 80%;">
+                                <div class="d-flex align-center gap-2 mb-1">
+                                    <MudAvatar Size="Size.Small" Color="Color.Secondary"><MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" /></MudAvatar>
+                                    <MudText Typo="Typo.subtitle2" Class="font-weight-bold text-white">You</MudText>
+                                    <MudSpacer />
+                                    <MudText Typo="Typo.caption" Class="text-white-50">@msg.CreatedAt.ToString("HH:mm:ss")</MudText>
+                                </div>
+                                <MudText Typo="Typo.body1" Class="text-white">@msg.Content</MudText>
+                            </MudPaper>
+                        </div>
+                    }
+                    else
+                    {
+                        <!-- Assistant Message Bubble -->
+                        <div class="d-flex justify-start">
+                            <MudPaper Elevation="2" Class="pa-5 rounded-xl border-solid border mud-border-lines-default" Style="max-width: 90%; background-color: var(--mud-palette-surface);">
+                                <div class="d-flex align-center gap-2 mb-3">
+                                    <MudAvatar Size="Size.Small" Color="Color.Primary"><MudIcon Icon="@Icons.Material.Filled.SmartToy" Size="Size.Small" /></MudAvatar>
+                                    <MudText Typo="Typo.subtitle2" Class="font-weight-bold">@activePersona Agent</MudText>
+                                    <MudChip T="string" Color="Color.Primary" Size="Size.Small" Variant="Variant.Outlined">@activeModel</MudChip>
+                                    <MudSpacer />
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">@msg.CreatedAt.ToString("HH:mm:ss")</MudText>
+                                </div>
+
+                                <MudText Typo="Typo.body1" Style="white-space: pre-wrap; line-height: 1.6;" Class="mb-3">@msg.Content</MudText>
+
+                                <!-- Autonomous Tool Calling Execution Trace -->
+                                @if (msg.ToolCalls.Count > 0)
+                                {
+                                    <MudExpansionPanels Elevation="0" Class="mb-3">
+                                        <MudExpansionPanel Text="@($"Autonomous Tool Execution ({msg.ToolCalls.Count} tools invoked)")">
+                                            <div class="d-flex flex-column gap-2 pt-2">
+                                                @foreach (var tool in msg.ToolCalls)
+                                                {
+                                                    <MudPaper Elevation="0" Class="pa-3 rounded-lg border-solid border mud-border-lines-default" Style="background-color: var(--mud-palette-background-grey);">
+                                                        <div class="d-flex justify-space-between align-center mb-1">
+                                                            <div class="d-flex align-center gap-1">
+                                                                <MudIcon Icon="@Icons.Material.Filled.BuildCircle" Size="Size.Small" Color="Color.Primary" />
+                                                                <MudText Typo="Typo.subtitle2" Class="font-weight-bold font-monospace">@tool.ToolName</MudText>
+                                                            </div>
+                                                            <MudChip T="string" Color="Color.Info" Size="Size.Small">@tool.DurationMs ms</MudChip>
+                                                        </div>
+                                                        <MudText Typo="Typo.caption" Class="d-block font-monospace mb-1" Color="Color.Secondary">Args: @tool.Arguments</MudText>
+                                                        <MudText Typo="Typo.body2" Color="Color.Success">Result: @tool.Result</MudText>
+                                                    </MudPaper>
+                                                }
+                                            </div>
+                                        </MudExpansionPanel>
+                                    </MudExpansionPanels>
+                                }
+
+                                <!-- Grounded RAG Citations Accordion -->
+                                @if (msg.Citations.Count > 0)
+                                {
+                                    <MudExpansionPanels Elevation="0">
+                                        <MudExpansionPanel Text="@($"Verified RAG Citations ({msg.Citations.Count} documents)")">
+                                            <div class="d-flex flex-column gap-2 pt-2">
+                                                @foreach (var cit in msg.Citations)
+                                                {
+                                                    <MudPaper Elevation="0" Class="pa-3 rounded-lg border-solid border mud-border-lines-default" Style="background-color: var(--mud-palette-background-grey);">
+                                                        <div class="d-flex justify-space-between align-center mb-1">
+                                                            <MudText Typo="Typo.subtitle2" Class="font-weight-bold">@cit.DocumentTitle (Chunk #@cit.ChunkIndex)</MudText>
+                                                            <MudChip T="string" Color="Color.Success" Size="Size.Small">@(cit.Similarity.ToString("P0")) Match</MudChip>
+                                                        </div>
+                                                        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="font-italic">"@cit.TextSnippet"</MudText>
+                                                    </MudPaper>
+                                                }
+                                            </div>
+                                        </MudExpansionPanel>
+                                    </MudExpansionPanels>
+                                }
+                            </MudPaper>
+                        </div>
+                    }
+                }
+
+                @if (isGenerating)
+                {
+                    <div class="d-flex justify-start">
+                        <MudPaper Elevation="1" Class="pa-4 rounded-xl d-flex align-center gap-3">
+                            <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Small" />
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">@activePersona Agent is reasoning, retrieving RAG context, and executing tools...</MudText>
+                        </MudPaper>
+                    </div>
+                }
+            </div>
+
+            <!-- Chat Prompt Input Footer -->
+            <div class="pa-4 border-t border-solid mud-border-lines-default d-flex gap-2 align-center">
+                <MudTextField @bind-Value="inputPrompt"
+                              Placeholder="Ask the agent about architecture, security, code synthesis, or domain workflows..."
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              Class="flex-grow-1"
+                              Immediate="true"
+                              OnKeyDown="HandleKeyPress"
+                              Disabled="isGenerating" />
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           EndIcon="@Icons.Material.Filled.Send"
+                           OnClick="SendMessage"
+                           Disabled="@(string.IsNullOrWhiteSpace(inputPrompt) || isGenerating)">
+                    Send
+                </MudButton>
+            </div>
+        </MudCard>
+    </MudItem>
+</MudGrid>
+
+@code {
+    private string activePersona = "Solution Architect";
+    private string activeModel = "gemma4:31b";
+    private bool enableRag = true;
+    private bool enableAutonomousTools = true;
+    private string inputPrompt = "";
+    private bool isGenerating = false;
+
+    private Guid activeConversationId = Guid.Empty;
+    private List<AiMessageDto> messages = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadConversations();
+    }
+
+    private async Task LoadConversations()
+    {
+        try
+        {
+            var convs = await Http.GetFromJsonAsync<List<AiConversationDto>>("/api/ai/conversations");
+            if (convs != null && convs.Count > 0)
+            {
+                activeConversationId = convs[0].Id;
+                activePersona = convs[0].Persona;
+                await LoadMessages();
+            }
+            else
+            {
+                await StartNewConversation();
+            }
+        }
+        catch { }
+    }
+
+    private async Task StartNewConversation()
+    {
+        try
+        {
+            var req = new CreateConversationRequest("Enterprise Architecture Consultation", activePersona, activeModel);
+            var res = await Http.PostAsJsonAsync("/api/ai/conversations", req);
+            if (res.IsSuccessStatusCode)
+            {
+                var created = await res.Content.ReadFromJsonAsync<AiConversationDto>();
+                if (created != null)
+                {
+                    activeConversationId = created.Id;
+                    messages.Clear();
+                }
+            }
+        }
+        catch { }
+    }
+
+    private async Task LoadMessages()
+    {
+        if (activeConversationId == Guid.Empty) return;
+        try
+        {
+            messages = await Http.GetFromJsonAsync<List<AiMessageDto>>($"/api/ai/conversations/{activeConversationId}/messages") ?? new();
+        }
+        catch { }
+    }
+
+    private void SetPrompt(string p) => inputPrompt = p;
+
+    private async Task HandleKeyPress(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !string.IsNullOrWhiteSpace(inputPrompt) && !isGenerating)
+        {
+            await SendMessage();
+        }
+    }
+
+    private async Task SendMessage()
+    {
+        if (string.IsNullOrWhiteSpace(inputPrompt) || isGenerating) return;
+
+        var userText = inputPrompt;
+        inputPrompt = "";
+        isGenerating = true;
+
+        messages.Add(new AiMessageDto(Guid.NewGuid(), activeConversationId, "user", userText, new(), new(), DateTime.UtcNow));
+
+        try
+        {
+            var req = new SendAgentMessageRequest(userText, activePersona, enableRag, enableAutonomousTools, activeModel);
+            var res = await Http.PostAsJsonAsync($"/api/ai/conversations/{activeConversationId}/messages", req);
+            if (res.IsSuccessStatusCode)
+            {
+                var assistantReply = await res.Content.ReadFromJsonAsync<AiMessageDto>();
+                if (assistantReply != null)
+                {
+                    messages.Add(assistantReply);
+                }
+            }
+            else
+            {
+                Snackbar.Add("Agent inference failed.", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Agent communication error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isGenerating = false;
+        }
+    }
+}

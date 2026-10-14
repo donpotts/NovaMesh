@@ -1,0 +1,337 @@
+@page "/admin/languages"
+@inject HttpClient Http
+@inject ISnackbar Snackbar
+
+<PageTitle>Localization & Languages</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="pa-0">
+    <div class="d-flex justify-space-between align-center mb-4 flex-wrap gap-2">
+        <div>
+            <MudText Typo="Typo.h5" Class="font-weight-bold">
+                <MudIcon Icon="@Icons.Material.Filled.Translate" Class="mr-2" Color="Color.Primary" />
+                Enterprise Localization & Languages
+            </MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                Multi-language culture management and centralized translation resource dictionary
+            </MudText>
+        </div>
+        <div class="d-flex gap-2">
+            <MudButton Variant="Variant.Outlined" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Refresh" OnClick="LoadDataAsync">
+                Refresh
+            </MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="@(() => _showAddLanguageDialog = true)">
+                Add Language
+            </MudButton>
+        </div>
+    </div>
+
+    <MudTabs Elevation="1" Rounded="true" ApplyEffectsToContainer="true" Class="mb-4">
+        <!-- Tab 1: Configured Languages -->
+        <MudTabPanel Text="Configured Cultures" Icon="@Icons.Material.Filled.Public">
+            <div class="pa-4">
+                @if (_loading)
+                {
+                    <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+                }
+                else
+                {
+                    <MudGrid>
+                        @foreach (var lang in _languages)
+                        {
+                            <MudItem xs="12" sm="6" md="4">
+                                <MudCard Elevation="2" Class="rounded-lg h-100 d-flex flex-column justify-space-between">
+                                    <MudCardHeader>
+                                        <CardHeaderAvatar>
+                                            <MudAvatar Size="Size.Large" Color="Color.Dark">
+                                                <span style="font-size: 1.5rem;">@lang.FlagEmoji</span>
+                                            </MudAvatar>
+                                        </CardHeaderAvatar>
+                                        <CardHeaderContent>
+                                            <div class="d-flex align-center gap-2">
+                                                <MudText Typo="Typo.subtitle1" Class="font-weight-bold">@lang.DisplayName</MudText>
+                                                @if (lang.IsDefault)
+                                                {
+                                                    <MudChip T="string" Size="Size.Small" Color="Color.Success">Default</MudChip>
+                                                }
+                                            </div>
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="font-monospace">@lang.CultureCode</MudText>
+                                        </CardHeaderContent>
+                                    </MudCardHeader>
+                                    <MudCardContent>
+                                        <div class="mb-2 d-flex justify-space-between align-center">
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">Translation Progress</MudText>
+                                            <MudText Typo="Typo.caption" Class="font-weight-bold">@lang.TranslationProgressPercent%</MudText>
+                                        </div>
+                                        <MudProgressLinear Value="@lang.TranslationProgressPercent" Color="@(lang.TranslationProgressPercent >= 90 ? Color.Success : Color.Info)" Rounded="true" Class="mb-3" />
+                                        <div class="d-flex justify-space-between align-center">
+                                            <MudText Typo="Typo.body2">Active Status</MudText>
+                                            <MudSwitch T="bool" Value="@lang.IsActive" ValueChanged="@((bool v) => ToggleActiveAsync(lang))" Color="Color.Primary" />
+                                        </div>
+                                    </MudCardContent>
+                                    <MudCardActions Class="justify-space-between px-4 pb-4">
+                                        @if (!lang.IsDefault)
+                                        {
+                                            <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary" OnClick="@(() => SetDefaultLanguageAsync(lang))">
+                                                Set Default
+                                            </MudButton>
+                                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteLanguageAsync(lang))" />
+                                        }
+                                        else
+                                        {
+                                            <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Text">Primary System Culture</MudChip>
+                                        }
+                                    </MudCardActions>
+                                </MudCard>
+                            </MudItem>
+                        }
+                    </MudGrid>
+                }
+            </div>
+        </MudTabPanel>
+
+        <!-- Tab 2: Translation Resource Strings -->
+        <MudTabPanel Text="Resource Translation Dictionary" Icon="@Icons.Material.Filled.FontDownload">
+            <div class="pa-4">
+                <MudCard Elevation="0" Class="pa-4 mb-4" Style="background: rgba(var(--mud-palette-surface-rgb), 0.4); border: 1px solid rgba(255,255,255,0.08);">
+                    <div class="d-flex gap-4 align-center flex-wrap">
+                        <MudSelect T="string" @bind-Value="_selectedCulture" Label="Filter Culture" Dense="true" Style="min-width: 180px;" SelectedValuesChanged="LoadTextsAsync">
+                            @foreach (var l in _languages)
+                            {
+                                <MudSelectItem Value="@l.CultureCode">@(l.FlagEmoji + " " + l.DisplayName + " (" + l.CultureCode + ")")</MudSelectItem>
+                            }
+                        </MudSelect>
+                        <MudTextField @bind-Value="_textSearch" Placeholder="Filter by resource key or translation..." Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Immediate="true" OnKeyUp="LoadTextsAsync" Class="flex-grow-1" />
+                    </div>
+                </MudCard>
+
+                <MudTable Items="@_texts" Elevation="1" Hover="true" Dense="true">
+                    <HeaderContent>
+                        <MudTh>Resource Key</MudTh>
+                        <MudTh>Category</MudTh>
+                        <MudTh>Culture</MudTh>
+                        <MudTh>Translated String</MudTh>
+                        <MudTh Style="text-align:right">Action</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="Key">
+                            <MudText Typo="Typo.subtitle2" Class="font-monospace font-weight-bold">@context.ResourceKey</MudText>
+                        </MudTd>
+                        <MudTd DataLabel="Category">
+                            <MudChip T="string" Size="Size.Small" Color="Color.Default">@context.Category</MudChip>
+                        </MudTd>
+                        <MudTd DataLabel="Culture">
+                            <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Outlined">@context.CultureCode</MudChip>
+                        </MudTd>
+                        <MudTd DataLabel="Value">
+                            <MudText Typo="Typo.body2">@context.Value</MudText>
+                        </MudTd>
+                        <MudTd DataLabel="Action" Style="text-align:right">
+                            <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary" OnClick="@(() => OpenEditText(context))" />
+                        </MudTd>
+                    </RowTemplate>
+                </MudTable>
+            </div>
+        </MudTabPanel>
+    </MudTabs>
+</MudContainer>
+
+<!-- Edit Resource Text Dialog -->
+<MudDialog @bind-Visible="_showEditTextDialog">
+    <TitleContent>
+        <div class="d-flex align-center gap-2">
+            <MudIcon Icon="@Icons.Material.Filled.Translate" Color="Color.Primary" />
+            <MudText Typo="Typo.h6">Edit Translation: @_selectedText?.ResourceKey</MudText>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        @if (_selectedText != null)
+        {
+            <div class="d-flex flex-column gap-3">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Culture: <strong>@_selectedText.CultureCode</strong></MudText>
+                <MudTextField @bind-Value="_editResourceValue" Label="Translated Value" Lines="2" Required="true" />
+            </div>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _showEditTextDialog = false)">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="SaveResourceTextAsync">Save Translation</MudButton>
+    </DialogActions>
+</MudDialog>
+
+<!-- Add Language Dialog -->
+<MudDialog @bind-Visible="_showAddLanguageDialog">
+    <TitleContent>
+        <div class="d-flex align-center gap-2">
+            <MudIcon Icon="@Icons.Material.Filled.Language" Color="Color.Primary" />
+            <MudText Typo="Typo.h6">Register System Language</MudText>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <div class="d-flex flex-column gap-3">
+            <MudTextField @bind-Value="_newLanguage.CultureCode" Label="Culture Code" Placeholder="e.g. it-IT, pt-BR, nl-NL" Required="true" />
+            <MudTextField @bind-Value="_newLanguage.DisplayName" Label="Display Name" Placeholder="e.g. Italian (Italy)" Required="true" />
+            <MudTextField @bind-Value="_newLanguage.FlagEmoji" Label="Flag Emoji" Placeholder="e.g. 🇮🇹" />
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _showAddLanguageDialog = false)">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="AddLanguageAsync">Add Language</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private List<LanguageDto> _languages = new();
+    private List<LocalizationResourceDto> _texts = new();
+    private bool _loading = true;
+
+    private string _selectedCulture = "es-ES";
+    private string _textSearch = "";
+
+    private bool _showAddLanguageDialog = false;
+    private bool _showEditTextDialog = false;
+
+    private CreateLanguageRequest _newLanguage = new();
+    private LocalizationResourceDto? _selectedText;
+    private string _editResourceValue = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        _loading = true;
+        try
+        {
+            var langs = await Http.GetFromJsonAsync<List<LanguageDto>>("/api/languages");
+            _languages = langs ?? new();
+            await LoadTextsAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Error loading languages: " + ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task LoadTextsAsync()
+    {
+        try
+        {
+            var url = "/api/languages/texts?cultureCode=" + Uri.EscapeDataString(_selectedCulture) + "&search=" + Uri.EscapeDataString(_textSearch);
+            var texts = await Http.GetFromJsonAsync<List<LocalizationResourceDto>>(url);
+            _texts = texts ?? new();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Error loading translation texts: " + ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task SetDefaultLanguageAsync(LanguageDto lang)
+    {
+        try
+        {
+            var res = await Http.PutAsync("/api/languages/" + lang.Id + "/default", null);
+            if (res.IsSuccessStatusCode)
+            {
+                Snackbar.Add(lang.DisplayName + " is now the default language.", Severity.Success);
+                await LoadDataAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Error: " + ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task ToggleActiveAsync(LanguageDto lang)
+    {
+        try
+        {
+            var res = await Http.PutAsync("/api/languages/" + lang.Id + "/toggle-active", null);
+            if (res.IsSuccessStatusCode)
+            {
+                lang.IsActive = !lang.IsActive;
+                Snackbar.Add("Updated " + lang.DisplayName + " active state.", Severity.Info);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Error: " + ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task DeleteLanguageAsync(LanguageDto lang)
+    {
+        try
+        {
+            var res = await Http.DeleteAsync("/api/languages/" + lang.Id);
+            if (res.IsSuccessStatusCode)
+            {
+                Snackbar.Add("Deleted " + lang.DisplayName + ".", Severity.Info);
+                await LoadDataAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Error: " + ex.Message, Severity.Error);
+        }
+    }
+
+    private void OpenEditText(LocalizationResourceDto text)
+    {
+        _selectedText = text;
+        _editResourceValue = text.Value;
+        _showEditTextDialog = true;
+    }
+
+    private async Task SaveResourceTextAsync()
+    {
+        if (_selectedText == null) return;
+        try
+        {
+            var req = new UpdateResourceRequest { Value = _editResourceValue };
+            var res = await Http.PutAsJsonAsync("/api/languages/texts/" + _selectedText.Id, req);
+            if (res.IsSuccessStatusCode)
+            {
+                _selectedText.Value = _editResourceValue;
+                Snackbar.Add("Translation saved.", Severity.Success);
+                _showEditTextDialog = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Error: " + ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task AddLanguageAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_newLanguage.CultureCode) || string.IsNullOrWhiteSpace(_newLanguage.DisplayName))
+        {
+            Snackbar.Add("Culture Code and Display Name are required.", Severity.Warning);
+            return;
+        }
+
+        try
+        {
+            var res = await Http.PostAsJsonAsync("/api/languages", _newLanguage);
+            if (res.IsSuccessStatusCode)
+            {
+                Snackbar.Add("Added language '" + _newLanguage.DisplayName + "'.", Severity.Success);
+                _showAddLanguageDialog = false;
+                _newLanguage = new();
+                await LoadDataAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Add language failed: " + ex.Message, Severity.Error);
+        }
+    }
+}

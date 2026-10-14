@@ -1,0 +1,275 @@
+@page "/admin/notifications"
+@inject HttpClient Http
+@inject ISnackbar Snackbar
+@inject NavigationManager Nav
+
+<PageTitle>Enterprise Notification Center</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="pa-0">
+    <div class="d-flex justify-space-between align-center mb-4 flex-wrap gap-2">
+        <div>
+            <MudText Typo="Typo.h5" Class="font-weight-bold">
+                <MudIcon Icon="@Icons.Material.Filled.NotificationsActive" Class="mr-2" Color="Color.Primary" />
+                Enterprise Notification Center
+            </MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                Real-time enterprise broadcast alerts, security warnings, and system notices
+            </MudText>
+        </div>
+        <div class="d-flex gap-2">
+            <MudButton Variant="Variant.Outlined" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.DoneAll" OnClick="MarkAllAsReadAsync">
+                Mark All As Read
+            </MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Campaign" OnClick="@(() => _showBroadcastDialog = true)">
+                Broadcast Notice
+            </MudButton>
+        </div>
+    </div>
+
+    <!-- Filter Chips -->
+    <div class="d-flex gap-2 mb-4 flex-wrap">
+        <MudChip T="string" Variant="@(_selectedSeverity == "All" && !_unreadOnly ? Variant.Filled : Variant.Outlined)" Color="Color.Primary" OnClick="@(() => SetFilter("All", false))">
+            All (@_notifications.Count)
+        </MudChip>
+        <MudChip T="string" Variant="@(_unreadOnly ? Variant.Filled : Variant.Outlined)" Color="Color.Warning" OnClick="@(() => SetFilter("All", true))">
+            Unread (@_notifications.Count(n => !n.IsRead))
+        </MudChip>
+        <MudChip T="string" Variant="@(_selectedSeverity == "Warning" ? Variant.Filled : Variant.Outlined)" Color="Color.Warning" OnClick="@(() => SetFilter("Warning", false))">
+            Warnings
+        </MudChip>
+        <MudChip T="string" Variant="@(_selectedSeverity == "Success" ? Variant.Filled : Variant.Outlined)" Color="Color.Success" OnClick="@(() => SetFilter("Success", false))">
+            Success
+        </MudChip>
+        <MudChip T="string" Variant="@(_selectedSeverity == "Info" ? Variant.Filled : Variant.Outlined)" Color="Color.Info" OnClick="@(() => SetFilter("Info", false))">
+            Informational
+        </MudChip>
+        <MudChip T="string" Variant="@(_selectedSeverity == "Error" ? Variant.Filled : Variant.Outlined)" Color="Color.Error" OnClick="@(() => SetFilter("Error", false))">
+            Alerts
+        </MudChip>
+    </div>
+
+    @if (_loading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+    }
+    else
+    {
+        <div class="d-flex flex-column gap-3">
+            @foreach (var notif in _filteredNotifications)
+            {
+                <MudPaper Class="pa-4 rounded-lg d-flex align-start justify-space-between gap-4" Elevation="@(notif.IsRead ? 1 : 3)">
+                    <div class="d-flex align-start gap-3 flex-grow-1">
+                        <MudAvatar Color="@GetSeverityColor(notif.Severity)" Variant="Variant.Filled" Size="Size.Medium" Class="mt-1">
+                            <MudIcon Icon="@GetSeverityIcon(notif.Severity)" />
+                        </MudAvatar>
+                        <div class="flex-grow-1">
+                            <div class="d-flex align-center gap-2 mb-1 flex-wrap">
+                                <MudText Typo="Typo.subtitle1" Class="font-weight-bold">@notif.Title</MudText>
+                                <MudChip T="string" Size="Size.Small" Color="@GetSeverityColor(notif.Severity)" Variant="Variant.Text">@notif.Severity</MudChip>
+                                <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">@notif.TargetAudience</MudChip>
+                                @if (!notif.IsRead)
+                                {
+                                    <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Filled">New</MudChip>
+                                }
+                            </div>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-2">@notif.Message</MudText>
+                            <div class="d-flex align-center gap-4">
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                    <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" Class="mr-1" />
+                                    By @notif.CreatedBy &bull; @notif.CreatedAt.ToLocalTime().ToString("g")
+                                </MudText>
+                                @if (!string.IsNullOrWhiteSpace(notif.ActionUrl))
+                                {
+                                    <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" OnClick="@(() => Nav.NavigateTo(notif.ActionUrl))">
+                                        View Action &rarr;
+                                    </MudButton>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                    <div class="d-flex gap-1 align-center">
+                        @if (!notif.IsRead)
+                        {
+                            <MudIconButton Icon="@Icons.Material.Filled.MarkEmailRead" Size="Size.Small" Color="Color.Primary" aria-label="Mark as read" OnClick="@(() => MarkAsReadAsync(notif))" />
+                        }
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" aria-label="Dismiss" OnClick="@(() => DeleteNotificationAsync(notif))" />
+                    </div>
+                </MudPaper>
+            }
+
+            @if (_filteredNotifications.Count == 0)
+            {
+                <MudPaper Class="pa-10 text-center" Elevation="1">
+                    <MudIcon Icon="@Icons.Material.Filled.NotificationsNone" Size="Size.Large" Color="Color.Secondary" Class="mb-2" />
+                    <MudText Typo="Typo.h6" Color="Color.Secondary">No notifications in this filter view</MudText>
+                </MudPaper>
+            }
+        </div>
+    }
+</MudContainer>
+
+<!-- Broadcast Notice Dialog -->
+<MudDialog @bind-Visible="_showBroadcastDialog">
+    <TitleContent>
+        <div class="d-flex align-center gap-2">
+            <MudIcon Icon="@Icons.Material.Filled.Campaign" Color="Color.Primary" />
+            <MudText Typo="Typo.h6">Broadcast System Notification</MudText>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <div class="d-flex flex-column gap-3">
+            <MudTextField @bind-Value="_newNotif.Title" Label="Notice Title" Placeholder="e.g. Planned Infrastructure Upgrade" Required="true" />
+            <MudTextField @bind-Value="_newNotif.Message" Label="Message Body" Lines="3" Placeholder="Enter full notification message..." Required="true" />
+            <MudSelect T="string" @bind-Value="_newNotif.Severity" Label="Severity Level">
+                <MudSelectItem Value="@("Info")">Info (Blue)</MudSelectItem>
+                <MudSelectItem Value="@("Success")">Success (Green)</MudSelectItem>
+                <MudSelectItem Value="@("Warning")">Warning (Orange)</MudSelectItem>
+                <MudSelectItem Value="@("Error")">Critical Alert (Red)</MudSelectItem>
+            </MudSelect>
+            <MudSelect T="string" @bind-Value="_newNotif.TargetAudience" Label="Target Audience">
+                <MudSelectItem Value="@("All Users")">All Users & Tenants</MudSelectItem>
+                <MudSelectItem Value="@("Administrators")">Administrators Only</MudSelectItem>
+                <MudSelectItem Value="@("Tenant Users")">Tenant Operators Only</MudSelectItem>
+            </MudSelect>
+            <MudTextField @bind-Value="_newNotif.ActionUrl" Label="Action URL (Optional)" Placeholder="e.g. /admin/health" />
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _showBroadcastDialog = false)">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="BroadcastNoticeAsync">Broadcast Notice</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private List<NotificationDto> _notifications = new();
+    private bool _loading = true;
+    private string _selectedSeverity = "All";
+    private bool _unreadOnly = false;
+    private bool _showBroadcastDialog = false;
+    private CreateNotificationRequest _newNotif = new();
+
+    private List<NotificationDto> _filteredNotifications => _notifications
+        .Where(n => (_selectedSeverity == "All" || n.Severity == _selectedSeverity) && (!_unreadOnly || !n.IsRead))
+        .ToList();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadNotificationsAsync();
+    }
+
+    private void SetFilter(string severity, bool unreadOnly)
+    {
+        _selectedSeverity = severity;
+        _unreadOnly = unreadOnly;
+    }
+
+    private async Task LoadNotificationsAsync()
+    {
+        _loading = true;
+        try
+        {
+            var result = await Http.GetFromJsonAsync<List<NotificationDto>>("/api/notifications");
+            _notifications = result ?? new();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Error loading notifications: " + ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task MarkAsReadAsync(NotificationDto notif)
+    {
+        try
+        {
+            var res = await Http.PutAsync("/api/notifications/" + notif.Id + "/read", null);
+            if (res.IsSuccessStatusCode)
+            {
+                notif.IsRead = true;
+                Snackbar.Add("Notification marked as read.", Severity.Success);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Error: " + ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task MarkAllAsReadAsync()
+    {
+        try
+        {
+            var res = await Http.PostAsync("/api/notifications/mark-all-read", null);
+            if (res.IsSuccessStatusCode)
+            {
+                foreach (var n in _notifications) n.IsRead = true;
+                Snackbar.Add("All notifications marked as read.", Severity.Success);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Error: " + ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task DeleteNotificationAsync(NotificationDto notif)
+    {
+        try
+        {
+            var res = await Http.DeleteAsync("/api/notifications/" + notif.Id);
+            if (res.IsSuccessStatusCode)
+            {
+                _notifications.Remove(notif);
+                Snackbar.Add("Notification dismissed.", Severity.Info);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Error: " + ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task BroadcastNoticeAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_newNotif.Title) || string.IsNullOrWhiteSpace(_newNotif.Message))
+        {
+            Snackbar.Add("Title and message are required.", Severity.Warning);
+            return;
+        }
+
+        try
+        {
+            var res = await Http.PostAsJsonAsync("/api/notifications", _newNotif);
+            if (res.IsSuccessStatusCode)
+            {
+                Snackbar.Add("Notice broadcasted successfully.", Severity.Success);
+                _showBroadcastDialog = false;
+                _newNotif = new();
+                await LoadNotificationsAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Broadcast failed: " + ex.Message, Severity.Error);
+        }
+    }
+
+    private Color GetSeverityColor(string severity) => severity switch
+    {
+        "Warning" => Color.Warning,
+        "Success" => Color.Success,
+        "Error" => Color.Error,
+        _ => Color.Info
+    };
+
+    private string GetSeverityIcon(string severity) => severity switch
+    {
+        "Warning" => Icons.Material.Filled.Warning,
+        "Success" => Icons.Material.Filled.CheckCircle,
+        "Error" => Icons.Material.Filled.Error,
+        _ => Icons.Material.Filled.Info
+    };
+}

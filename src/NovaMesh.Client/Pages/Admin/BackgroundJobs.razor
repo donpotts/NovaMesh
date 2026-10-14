@@ -1,0 +1,338 @@
+@page "/admin/background-jobs"
+@using System.Net.Http.Json
+@using System.Text.Json
+@using NovaMesh.Client.Models
+@inject HttpClient Http
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<PageTitle>Background Jobs &amp; Worker Queue</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-6 mb-8">
+    <div class="d-flex flex-column flex-sm-row justify-space-between align-start align-sm-center mb-6 gap-4">
+        <div>
+            <div class="d-flex align-center gap-3">
+                <MudAvatar Color="Color.Primary" Rounded="true" Size="Size.Large">
+                    <MudIcon Icon="@Icons.Material.Filled.Schedule" Size="Size.Medium" />
+                </MudAvatar>
+                <div>
+                    <MudText Typo="Typo.h5" Class="fw-bold">Background Worker Queue &amp; Jobs</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        Enterprise job scheduler, recurring Cron triggers, execution metrics, and worker queue controls.
+                    </MudText>
+                </div>
+            </div>
+        </div>
+        <div class="d-flex gap-2">
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Refresh" OnClick="LoadJobsAsync">
+                Refresh
+            </MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="OpenCreateDialog">
+                Schedule Job
+            </MudButton>
+        </div>
+    </div>
+
+    <!-- KPI Summary Row -->
+    <MudGrid Class="mb-6">
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-4 d-flex align-center gap-4" Elevation="1">
+                <MudAvatar Color="Color.Primary" Variant="Variant.Filled" Size="Size.Medium">
+                    <MudIcon Icon="@Icons.Material.Filled.PlayArrow" />
+                </MudAvatar>
+                <div>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Active Schedules</MudText>
+                    <MudText Typo="Typo.h6">@_jobs.Count(j => j.Status == "Active")</MudText>
+                </div>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-4 d-flex align-center gap-4" Elevation="1">
+                <MudAvatar Color="Color.Warning" Variant="Variant.Filled" Size="Size.Medium">
+                    <MudIcon Icon="@Icons.Material.Filled.Pause" />
+                </MudAvatar>
+                <div>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Paused Jobs</MudText>
+                    <MudText Typo="Typo.h6">@_jobs.Count(j => j.Status == "Paused")</MudText>
+                </div>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-4 d-flex align-center gap-4" Elevation="1">
+                <MudAvatar Color="Color.Success" Variant="Variant.Filled" Size="Size.Medium">
+                    <MudIcon Icon="@Icons.Material.Filled.DoneAll" />
+                </MudAvatar>
+                <div>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Total Executions</MudText>
+                    <MudText Typo="Typo.h6">@_jobs.Sum(j => j.RunCount)</MudText>
+                </div>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-4 d-flex align-center gap-4" Elevation="1">
+                <MudAvatar Color="Color.Info" Variant="Variant.Filled" Size="Size.Medium">
+                    <MudIcon Icon="@Icons.Material.Filled.Speed" />
+                </MudAvatar>
+                <div>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Avg Execution Duration</MudText>
+                    <MudText Typo="Typo.h6">@(_jobs.Count > 0 ? (long)_jobs.Average(j => j.ExecutionDurationMs) : 0) ms</MudText>
+                </div>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+
+    @if (_loading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+    }
+    else
+    {
+        <MudPaper Elevation="1">
+            <MudTable Items="@_jobs" Hover="true" Dense="false" Elevation="0">
+                <HeaderContent>
+                    <MudTh>Job Name &amp; Description</MudTh>
+                    <MudTh>Group</MudTh>
+                    <MudTh>Schedule (Cron)</MudTh>
+                    <MudTh>Status</MudTh>
+                    <MudTh>Last Run</MudTh>
+                    <MudTh>Next Trigger</MudTh>
+                    <MudTh>Duration</MudTh>
+                    <MudTh>Runs</MudTh>
+                    <MudTh Style="text-align:right">Actions</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Job">
+                        <MudText Typo="Typo.subtitle2" Class="fw-bold">@context.JobName</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">@context.Description</MudText>
+                    </MudTd>
+                    <MudTd DataLabel="Group">
+                        <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">@context.JobGroup</MudChip>
+                    </MudTd>
+                    <MudTd DataLabel="Schedule">
+                        <code>@context.CronSchedule</code>
+                    </MudTd>
+                    <MudTd DataLabel="Status">
+                        @if (context.Status == "Active")
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Success">Active</MudChip>
+                        }
+                        else if (context.Status == "Running")
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Info">Running...</MudChip>
+                        }
+                        else if (context.Status == "Paused")
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Warning">Paused</MudChip>
+                        }
+                        else
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Default">@context.Status</MudChip>
+                        }
+                    </MudTd>
+                    <MudTd DataLabel="Last Run">
+                        <MudText Typo="Typo.body2">@(context.LastRunTime?.ToLocalTime().ToString("g") ?? "Never")</MudText>
+                    </MudTd>
+                    <MudTd DataLabel="Next Trigger">
+                        <MudText Typo="Typo.body2">@(context.NextRunTime?.ToLocalTime().ToString("t") ?? "N/A")</MudText>
+                    </MudTd>
+                    <MudTd DataLabel="Duration">
+                        <MudText Typo="Typo.body2">@(context.ExecutionDurationMs) ms</MudText>
+                    </MudTd>
+                    <MudTd DataLabel="Runs">
+                        <MudText Typo="Typo.body2" Class="fw-bold">@context.RunCount</MudText>
+                    </MudTd>
+                    <MudTd DataLabel="Actions" Style="text-align:right">
+                        <MudButtonGroup Variant="Variant.Outlined" Size="Size.Small">
+                            <MudTooltip Text="Trigger Run Now">
+                                <MudIconButton Icon="@Icons.Material.Filled.PlayArrow" Color="Color.Success" OnClick="@(() => RunJobAsync(context))" Disabled="@(context.Status == "Running")" />
+                            </MudTooltip>
+                            <MudTooltip Text="@(context.Status == "Paused" ? "Resume" : "Pause")">
+                                <MudIconButton Icon="@(context.Status == "Paused" ? Icons.Material.Filled.PlayCircleOutline : Icons.Material.Filled.Pause)" Color="Color.Warning" OnClick="@(() => TogglePauseJobAsync(context))" />
+                            </MudTooltip>
+                            <MudTooltip Text="Inspect Payload">
+                                <MudIconButton Icon="@Icons.Material.Filled.Code" Color="Color.Info" OnClick="@(() => InspectPayload(context))" />
+                            </MudTooltip>
+                            <MudTooltip Text="Delete Job">
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => DeleteJobAsync(context))" />
+                            </MudTooltip>
+                        </MudButtonGroup>
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+        </MudPaper>
+    }
+</MudContainer>
+
+<!-- Create Job Dialog -->
+<MudDialog @bind-Visible="_showCreateDialog">
+    <TitleContent>
+        <MudText Typo="Typo.h6">Schedule Background Job</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudTextField @bind-Value="_newJob.JobName" Label="Job Name" Required="true" Class="mb-3" />
+        <MudTextField @bind-Value="_newJob.JobGroup" Label="Group (e.g. AI Suite, Maintenance, SaaS)" Class="mb-3" />
+        <MudSelect @bind-Value="_newJob.JobType" Label="Job Type" Class="mb-3">
+            <MudSelectItem Value="@("AiVectorIndexWarmup")">AI Vector Index Warmup</MudSelectItem>
+            <MudSelectItem Value="@("AuditLogPruning")">Audit Log Pruning</MudSelectItem>
+            <MudSelectItem Value="@("TenantQuotaEnforcer")">Tenant Quota Enforcer</MudSelectItem>
+            <MudSelectItem Value="@("EmailDigestSender")">Email Digest Sender</MudSelectItem>
+            <MudSelectItem Value="@("DataSync")">Data Synchronization</MudSelectItem>
+        </MudSelect>
+        <MudTextField @bind-Value="_newJob.CronSchedule" Label="Cron Expression" HelperText="e.g. */15 * * * * (every 15 min), 0 * * * * (hourly), 0 0 * * * (daily)" Class="mb-3" />
+        <MudTextField @bind-Value="_newJob.Description" Label="Description" Lines="2" Class="mb-3" />
+        <MudTextField @bind-Value="_newJob.PayloadJson" Label="Payload JSON (Optional)" Lines="3" HelperText="Config parameters passed to job worker." />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _showCreateDialog = false)">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="SaveJobAsync">Schedule</MudButton>
+    </DialogActions>
+</MudDialog>
+
+<!-- Payload Inspector Dialog -->
+<MudDialog @bind-Visible="_showPayloadDialog">
+    <TitleContent>
+        <MudText Typo="Typo.h6">Job Payload &amp; Telemetry Details</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudText Typo="Typo.subtitle2" Class="mb-2"><strong>Job:</strong> @_selectedJob?.JobName</MudText>
+        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-4 d-block">Group: @_selectedJob?.JobGroup | Type: @_selectedJob?.JobType</MudText>
+        <MudPaper Class="pa-3 bg-dark" Elevation="0">
+            <pre style="margin:0; font-family:monospace; font-size:12px; overflow-x:auto;">@(_selectedJob?.PayloadJson ?? "No payload parameters specified.")</pre>
+        </MudPaper>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Color="Color.Primary" OnClick="@(() => _showPayloadDialog = false)">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private List<BackgroundJobDto> _jobs = new();
+    private bool _loading = true;
+    private bool _showCreateDialog = false;
+    private bool _showPayloadDialog = false;
+    private BackgroundJobDto? _selectedJob;
+    private CreateBackgroundJobRequest _newJob = new() { JobGroup = "General", JobType = "DataSync", CronSchedule = "0 * * * *", PayloadJson = "{}" };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadJobsAsync();
+    }
+
+    private async Task LoadJobsAsync()
+    {
+        _loading = true;
+        try
+        {
+            var res = await Http.GetFromJsonAsync<List<BackgroundJobDto>>("/api/background-jobs");
+            if (res != null) _jobs = res;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to load jobs: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task RunJobAsync(BackgroundJobDto job)
+    {
+        job.Status = "Running";
+        StateHasChanged();
+        try
+        {
+            var resp = await Http.PostAsync($"/api/background-jobs/{job.Id}/run", null);
+            if (resp.IsSuccessStatusCode)
+            {
+                var updated = await resp.Content.ReadFromJsonAsync<BackgroundJobDto>();
+                if (updated != null)
+                {
+                    var idx = _jobs.FindIndex(j => j.Id == job.Id);
+                    if (idx >= 0) _jobs[idx] = updated;
+                }
+                Snackbar.Add($"Job '{job.JobName}' executed successfully in {job.ExecutionDurationMs}ms!", Severity.Success);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Execution failed: {ex.Message}", Severity.Error);
+            job.Status = "Failed";
+        }
+    }
+
+    private async Task TogglePauseJobAsync(BackgroundJobDto job)
+    {
+        try
+        {
+            var resp = await Http.PostAsync($"/api/background-jobs/{job.Id}/toggle-pause", null);
+            if (resp.IsSuccessStatusCode)
+            {
+                var updated = await resp.Content.ReadFromJsonAsync<BackgroundJobDto>();
+                if (updated != null)
+                {
+                    var idx = _jobs.FindIndex(j => j.Id == job.Id);
+                    if (idx >= 0) _jobs[idx] = updated;
+                }
+                Snackbar.Add($"Job state updated to '{updated?.Status}'", Severity.Info);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void OpenCreateDialog()
+    {
+        _newJob = new() { JobGroup = "General", JobType = "DataSync", CronSchedule = "0 * * * *", PayloadJson = "{}" };
+        _showCreateDialog = true;
+    }
+
+    private async Task SaveJobAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_newJob.JobName))
+        {
+            Snackbar.Add("Job Name is required", Severity.Warning);
+            return;
+        }
+
+        try
+        {
+            var resp = await Http.PostAsJsonAsync("/api/background-jobs", _newJob);
+            if (resp.IsSuccessStatusCode)
+            {
+                Snackbar.Add("Job scheduled successfully!", Severity.Success);
+                _showCreateDialog = false;
+                await LoadJobsAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void InspectPayload(BackgroundJobDto job)
+    {
+        _selectedJob = job;
+        _showPayloadDialog = true;
+    }
+
+    private async Task DeleteJobAsync(BackgroundJobDto job)
+    {
+        try
+        {
+            var resp = await Http.DeleteAsync($"/api/background-jobs/{job.Id}");
+            if (resp.IsSuccessStatusCode)
+            {
+                _jobs.Remove(job);
+                Snackbar.Add($"Job '{job.JobName}' deleted", Severity.Success);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Delete failed: {ex.Message}", Severity.Error);
+        }
+    }
+}

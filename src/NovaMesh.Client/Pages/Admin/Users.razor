@@ -1,0 +1,84 @@
+@page "/admin/users"
+@inject HttpClient Http
+@inject ISnackbar Snackbar
+
+<PageTitle>User Management</PageTitle>
+
+<div class="d-flex justify-space-between align-center mb-4">
+    <div>
+        <MudText Typo="Typo.h5" Class="font-weight-bold"><MudIcon Icon="@Icons.Material.Filled.Group" Class="mr-2" />Identity Users & RBAC</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary">Manage system users, assigned roles, and access credentials</MudText>
+    </div>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PersonAdd" OnClick="OpenCreateDialog">New User</MudButton>
+</div>
+
+<MudTable Items="@users" Loading="@loading" Elevation="2" Hover="true">
+    <HeaderContent>
+        <MudTh>User</MudTh>
+        <MudTh>Email</MudTh>
+        <MudTh>Roles</MudTh>
+        <MudTh>Status</MudTh>
+        <MudTh>Created At</MudTh>
+        <MudTh>Actions</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd>
+            <div class="d-flex align-center gap-2">
+                <MudAvatar Color="Color.Primary" Size="Size.Small">@context.UserName[0].ToString().ToUpper()</MudAvatar>
+                <div>
+                    <MudText Typo="Typo.subtitle2">@context.FullName</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">@@@context.UserName</MudText>
+                </div>
+            </div>
+        </MudTd>
+        <MudTd>@context.Email</MudTd>
+        <MudTd>
+            @foreach (var r in context.Roles)
+            {
+                <MudChip T="string" Color="Color.Secondary" Size="Size.Small" Class="mr-1">@r</MudChip>
+            }
+        </MudTd>
+        <MudTd>
+            @if (context.IsActive) { <MudChip T="string" Color="Color.Success" Size="Size.Small">Active</MudChip> }
+            else { <MudChip T="string" Color="Color.Error" Size="Size.Small">Disabled</MudChip> }
+        </MudTd>
+        <MudTd>@context.CreatedAt.ToString("MMM dd, yyyy")</MudTd>
+        <MudTd>
+            <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" OnClick="() => DeleteUser(context.Id)" />
+        </MudTd>
+    </RowTemplate>
+    <PagerContent>
+        <MudTablePager PageSizeOptions="new int[] { 5, 10, 20 }" />
+    </PagerContent>
+</MudTable>
+
+@code {
+    private List<UserDto> users = new();
+    private bool loading;
+
+    protected override async Task OnInitializedAsync() => await LoadUsers();
+
+    private async Task LoadUsers()
+    {
+        loading = true;
+        try
+        {
+            var res = await Http.GetFromJsonAsync<PagedResultDto<UserDto>>("/api/identity/users?pageNumber=1&pageSize=50");
+            users = res?.Items ?? new();
+        }
+        catch { }
+        finally { loading = false; }
+    }
+
+    private void OpenCreateDialog() => Snackbar.Add("User registration modal active.", Severity.Info);
+
+    private async Task DeleteUser(Guid id)
+    {
+        var res = await Http.DeleteAsync($"/api/identity/users/{id}");
+        if (res.IsSuccessStatusCode)
+        {
+            Snackbar.Add("User deleted.", Severity.Success);
+            await LoadUsers();
+        }
+    }
+}

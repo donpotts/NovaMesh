@@ -1,0 +1,84 @@
+@page "/admin/audit-logs"
+@inject HttpClient Http
+@inject ISnackbar Snackbar
+
+<PageTitle>Audit Trail Logs</PageTitle>
+
+<div class="d-flex justify-space-between align-center mb-4">
+    <div>
+        <MudText Typo="Typo.h5" Class="font-weight-bold"><MudIcon Icon="@Icons.Material.Filled.History" Class="mr-2" />Audit Trail Event Logs</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary">Real-time HTTP request interceptor and security event ledger</MudText>
+    </div>
+    <MudButton Variant="Variant.Outlined" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Refresh" OnClick="LoadLogs">Refresh</MudButton>
+</div>
+
+<MudCard Elevation="2" Class="pa-4 mb-4">
+    <div class="d-flex gap-4 align-center flex-wrap">
+        <MudTextField @bind-Value="search" Placeholder="Filter by URL, User, or Action..." Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Immediate="true" OnKeyUp="LoadLogs" Class="flex-grow-1" />
+        <MudSelect T="string" @bind-Value="selectedMethod" Label="HTTP Method" Dense="true" Style="min-width: 140px;" SelectedValuesChanged="LoadLogs">
+            <MudSelectItem Value="@("All")">All Methods</MudSelectItem>
+            <MudSelectItem Value="@("GET")">GET</MudSelectItem>
+            <MudSelectItem Value="@("POST")">POST</MudSelectItem>
+            <MudSelectItem Value="@("PUT")">PUT</MudSelectItem>
+            <MudSelectItem Value="@("DELETE")">DELETE</MudSelectItem>
+        </MudSelect>
+    </div>
+</MudCard>
+
+<MudTable Items="@logs" Loading="@loading" Elevation="2" Hover="true" Dense="true">
+    <HeaderContent>
+        <MudTh>Timestamp</MudTh>
+        <MudTh>User</MudTh>
+        <MudTh>Method</MudTh>
+        <MudTh>URL</MudTh>
+        <MudTh>Status</MudTh>
+        <MudTh>Duration</MudTh>
+        <MudTh>Client IP</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd>@context.ExecutionTime.ToString("yyyy-MM-dd HH:mm:ss")</MudTd>
+        <MudTd><MudChip T="string" Size="Size.Small" Color="Color.Dark">@context.UserName</MudChip></MudTd>
+        <MudTd>
+            @if (context.HttpMethod == "GET") { <MudChip T="string" Size="Size.Small" Color="Color.Info">GET</MudChip> }
+            else if (context.HttpMethod == "POST") { <MudChip T="string" Size="Size.Small" Color="Color.Success">POST</MudChip> }
+            else if (context.HttpMethod == "PUT") { <MudChip T="string" Size="Size.Small" Color="Color.Warning">PUT</MudChip> }
+            else { <MudChip T="string" Size="Size.Small" Color="Color.Error">@context.HttpMethod</MudChip> }
+        </MudTd>
+        <MudTd><code class="mud-typography mud-typography-caption">@context.Url</code></MudTd>
+        <MudTd>
+            @if (context.HttpStatusCode >= 200 && context.HttpStatusCode < 300) { <MudChip T="string" Size="Size.Small" Color="Color.Success">@context.HttpStatusCode OK</MudChip> }
+            else if (context.HttpStatusCode >= 400 && context.HttpStatusCode < 500) { <MudChip T="string" Size="Size.Small" Color="Color.Warning">@context.HttpStatusCode</MudChip> }
+            else { <MudChip T="string" Size="Size.Small" Color="Color.Error">@context.HttpStatusCode</MudChip> }
+        </MudTd>
+        <MudTd>
+            @if (context.DurationMs < 50) { <MudText Typo="Typo.caption" Color="Color.Success">@context.DurationMs ms</MudText> }
+            else if (context.DurationMs < 200) { <MudText Typo="Typo.caption" Color="Color.Info">@context.DurationMs ms</MudText> }
+            else { <MudText Typo="Typo.caption" Color="Color.Warning">@context.DurationMs ms</MudText> }
+        </MudTd>
+        <MudTd><MudText Typo="Typo.caption" Color="Color.Secondary">@context.ClientIpAddress</MudText></MudTd>
+    </RowTemplate>
+    <PagerContent>
+        <MudTablePager PageSizeOptions="new int[] { 10, 20, 50 }" />
+    </PagerContent>
+</MudTable>
+
+@code {
+    private List<AuditLogDto> logs = new();
+    private bool loading;
+    private string search = "";
+    private string selectedMethod = "All";
+
+    protected override async Task OnInitializedAsync() => await LoadLogs();
+
+    private async Task LoadLogs()
+    {
+        loading = true;
+        try
+        {
+            var res = await Http.GetFromJsonAsync<PagedResultDto<AuditLogDto>>($"/api/audit-logs?search={Uri.EscapeDataString(search)}&httpMethod={selectedMethod}&pageNumber=1&pageSize=50");
+            logs = res?.Items ?? new();
+        }
+        catch { Snackbar.Add("Unable to load audit logs", Severity.Error); }
+        finally { loading = false; }
+    }
+}

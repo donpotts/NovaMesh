@@ -1,0 +1,297 @@
+@page "/ai/knowledge"
+@inject HttpClient Http
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<PageTitle>AI Document Knowledge Base & RAG</PageTitle>
+
+<!-- Header Banner -->
+<div class="d-flex justify-space-between align-center mb-6 flex-wrap gap-4">
+    <div>
+        <div class="d-flex align-center gap-2 mb-1">
+            <MudChip T="string" Color="Color.Primary" Size="Size.Small" Variant="Variant.Filled">SEMANTIC VECTOR RAG</MudChip>
+            <MudText Typo="Typo.h5" Class="font-weight-bold">AI Document Knowledge Base</MudText>
+        </div>
+        <MudText Typo="Typo.body2" Color="Color.Secondary">
+            Ingest technical documentation, OpenAPI contracts, and architectural manuals for high-precision vector RAG retrieval
+        </MudText>
+    </div>
+    <div class="d-flex gap-2">
+        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Refresh" OnClick="LoadData">Refresh</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PostAdd" OnClick="ToggleIngestForm">Ingest Document</MudButton>
+    </div>
+</div>
+
+<!-- KPI Metrics Row -->
+<MudGrid Class="mb-6">
+    <MudItem xs="12" sm="6" md="3">
+        <MudCard Elevation="2" Class="pa-4 rounded-lg">
+            <div class="d-flex justify-space-between align-center">
+                <div>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">INGESTED DOCUMENTS</MudText>
+                    <MudText Typo="Typo.h4" Class="font-weight-bold">@documents.Count</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Success">Active Knowledge</MudText>
+                </div>
+                <MudAvatar Color="Color.Primary" Size="Size.Large"><MudIcon Icon="@Icons.Material.Filled.LibraryBooks" /></MudAvatar>
+            </div>
+        </MudCard>
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <MudCard Elevation="2" Class="pa-4 rounded-lg">
+            <div class="d-flex justify-space-between align-center">
+                <div>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">VECTOR CHUNKS</MudText>
+                    <MudText Typo="Typo.h4" Class="font-weight-bold">@documents.Sum(d => d.ChunkCount)</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Info">Indexed in Embeddings</MudText>
+                </div>
+                <MudAvatar Color="Color.Info" Size="Size.Large"><MudIcon Icon="@Icons.Material.Filled.Grain" /></MudAvatar>
+            </div>
+        </MudCard>
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <MudCard Elevation="2" Class="pa-4 rounded-lg">
+            <div class="d-flex justify-space-between align-center">
+                <div>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">EMBEDDING MODEL</MudText>
+                    <MudText Typo="Typo.h6" Class="font-weight-bold">Nomic 768-dim</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Warning">Ollama Embedding</MudText>
+                </div>
+                <MudAvatar Color="Color.Warning" Size="Size.Large"><MudIcon Icon="@Icons.Material.Filled.Psychology" /></MudAvatar>
+            </div>
+        </MudCard>
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <MudCard Elevation="2" Class="pa-4 rounded-lg">
+            <div class="d-flex justify-space-between align-center">
+                <div>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">RAG SIMILARITY</MudText>
+                    <MudText Typo="Typo.h4" Class="font-weight-bold">Cosine</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Success">Threshold 0.70</MudText>
+                </div>
+                <MudAvatar Color="Color.Success" Size="Size.Large"><MudIcon Icon="@Icons.Material.Filled.CompareArrows" /></MudAvatar>
+            </div>
+        </MudCard>
+    </MudItem>
+</MudGrid>
+
+<!-- Ingestion Form (Collapsible) -->
+@if (showIngestForm)
+{
+    <MudCard Elevation="3" Class="pa-5 mb-6 rounded-xl" Style="border-left: 4px solid var(--mud-palette-primary);">
+        <MudText Typo="Typo.h6" Class="font-weight-bold mb-3"><MudIcon Icon="@Icons.Material.Filled.UploadFile" Class="mr-2" />Ingest Knowledge Document</MudText>
+        <MudGrid>
+            <MudItem xs="12" md="6">
+                <MudTextField @bind-Value="newTitle" Label="Document Title" Variant="Variant.Outlined" Margin="Margin.Dense" Class="mb-3" />
+            </MudItem>
+            <MudItem xs="12" md="3">
+                <MudSelect T="string" @bind-Value="newCategory" Label="Category" Variant="Variant.Outlined" Margin="Margin.Dense" Class="mb-3">
+                    <MudSelectItem Value="@("Architecture")">Architecture</MudSelectItem>
+                    <MudSelectItem Value="@("AI & RAG")">AI & RAG</MudSelectItem>
+                    <MudSelectItem Value="@("Security & Multi-Tenancy")">Security & Multi-Tenancy</MudSelectItem>
+                    <MudSelectItem Value="@("Autonomous Agents")">Autonomous Agents</MudSelectItem>
+                    <MudSelectItem Value="@("Frontend & UI")">Frontend & UI</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" md="3">
+                <MudSelect T="string" @bind-Value="newSourceType" Label="Source Type" Variant="Variant.Outlined" Margin="Margin.Dense" Class="mb-3">
+                    <MudSelectItem Value="@("Architecture Spec")">Architecture Spec</MudSelectItem>
+                    <MudSelectItem Value="@("Markdown")">Markdown</MudSelectItem>
+                    <MudSelectItem Value="@("OpenAPI Spec")">OpenAPI Spec</MudSelectItem>
+                    <MudSelectItem Value="@("Manual")">Manual</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12">
+                <MudTextField @bind-Value="newContent" Label="Document Content (Markdown / Text)" Variant="Variant.Outlined" Lines="5" HelperText="Document will be automatically tokenized and split into semantic chunks with embeddings." Class="mb-3" />
+            </MudItem>
+        </MudGrid>
+        <div class="d-flex justify-end gap-2 mt-2">
+            <MudButton Variant="Variant.Text" OnClick="() => showIngestForm = false">Cancel</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Save" OnClick="IngestDocument" Disabled="@(string.IsNullOrWhiteSpace(newTitle) || string.IsNullOrWhiteSpace(newContent) || ingesting)">
+                @(ingesting ? "Ingesting & Embedding..." : "Submit Ingestion")
+            </MudButton>
+        </div>
+    </MudCard>
+}
+
+<!-- Interactive RAG Semantic Search Sandbox -->
+<MudCard Elevation="2" Class="pa-5 mb-6 rounded-xl">
+    <div class="d-flex align-center gap-2 mb-3">
+        <MudIcon Icon="@Icons.Material.Filled.TravelExplore" Color="Color.Primary" />
+        <MudText Typo="Typo.h6" Class="font-weight-bold">Live RAG Semantic Retrieval Sandbox</MudText>
+    </div>
+    <div class="d-flex gap-4 align-center flex-wrap mb-4">
+        <MudTextField @bind-Value="ragSearchQuery" Placeholder="Enter natural language query to test vector similarity and citations..." Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Variant="Variant.Outlined" Margin="Margin.Dense" Class="flex-grow-1" />
+        <MudButton Variant="Variant.Filled" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Bolt" OnClick="TestRagQuery" Disabled="@(string.IsNullOrWhiteSpace(ragSearchQuery) || searchingRag)">
+            @(searchingRag ? "Scoring..." : "Run RAG Query")
+        </MudButton>
+    </div>
+
+    @if (ragResult != null)
+    {
+        <MudPaper Elevation="0" Class="pa-4 rounded-lg border-solid border mud-border-lines-default" Style="background-color: var(--mud-palette-background-grey);">
+            <div class="d-flex justify-space-between align-center mb-2">
+                <MudText Typo="Typo.subtitle2" Color="Color.Success" Class="font-weight-bold">
+                    <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Small" Class="mr-1" />
+                    Query Execution: @ragResult.ExecutionDurationMs ms | @ragResult.Citations.Count Grounded Citations
+                </MudText>
+            </div>
+            <MudText Typo="Typo.body1" Class="mb-4">@ragResult.Answer</MudText>
+            
+            <MudText Typo="Typo.caption" Class="font-weight-bold text-uppercase mb-2 d-block" Color="Color.Secondary">Retrieved Semantic Chunks & Cosine Scores:</MudText>
+            <div class="d-flex flex-column gap-2">
+                @foreach (var cit in ragResult.Citations)
+                {
+                    <MudPaper Elevation="1" Class="pa-3 rounded-lg">
+                        <div class="d-flex justify-space-between align-center mb-1">
+                            <MudText Typo="Typo.subtitle2" Class="font-weight-bold">@cit.DocumentTitle (Chunk #@cit.ChunkIndex)</MudText>
+                            <MudChip T="string" Color="Color.Primary" Size="Size.Small" Variant="Variant.Filled">@(cit.Similarity.ToString("P0")) Cosine</MudChip>
+                        </div>
+                        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="font-italic">"@cit.TextSnippet"</MudText>
+                    </MudPaper>
+                }
+            </div>
+        </MudPaper>
+    }
+</MudCard>
+
+<!-- Document Directory Table -->
+<MudCard Elevation="2" Class="rounded-xl overflow-hidden">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <div class="d-flex justify-space-between align-center flex-wrap gap-2">
+                <MudText Typo="Typo.h6" Class="font-weight-bold">Ingested Documents (@documents.Count)</MudText>
+                <MudTextField @bind-Value="tableFilter" Placeholder="Filter documents..." Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.FilterList" Margin="Margin.Dense" Immediate="true" />
+            </div>
+        </CardHeaderContent>
+    </MudCardHeader>
+    <MudCardContent Class="pa-0">
+        <MudTable Items="@FilteredDocuments" Loading="@loading" Elevation="0" Hover="true">
+            <HeaderContent>
+                <MudTh>Document Title</MudTh>
+                <MudTh>Category</MudTh>
+                <MudTh>Source Type</MudTh>
+                <MudTh>Chunks</MudTh>
+                <MudTh>Tokens</MudTh>
+                <MudTh>Model</MudTh>
+                <MudTh>Created Date</MudTh>
+                <MudTh>Actions</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd>
+                    <div>
+                        <MudText Typo="Typo.subtitle2" Class="font-weight-bold">@context.Title</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">@context.Summary</MudText>
+                    </div>
+                </MudTd>
+                <MudTd><MudChip T="string" Color="Color.Primary" Size="Size.Small" Variant="Variant.Outlined">@context.Category</MudChip></MudTd>
+                <MudTd><MudChip T="string" Color="Color.Secondary" Size="Size.Small">@context.SourceType</MudChip></MudTd>
+                <MudTd><MudChip T="string" Color="Color.Info" Size="Size.Small">@context.ChunkCount chunks</MudChip></MudTd>
+                <MudTd><MudText Typo="Typo.body2">@context.Tokens.ToString("N0")</MudText></MudTd>
+                <MudTd><MudChip T="string" Color="Color.Dark" Size="Size.Small">@context.EmbeddingModel</MudChip></MudTd>
+                <MudTd><MudText Typo="Typo.caption">@context.CreatedAt.ToString("MMM dd, yyyy")</MudText></MudTd>
+                <MudTd>
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" OnClick="() => DeleteDoc(context.Id)" />
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    </MudCardContent>
+</MudCard>
+
+@code {
+    private List<AiDocumentDto> documents = new();
+    private bool loading = false;
+    private bool showIngestForm = false;
+    private bool ingesting = false;
+    private bool searchingRag = false;
+    private string tableFilter = "";
+
+    private string newTitle = "";
+    private string newCategory = "Architecture";
+    private string newSourceType = "Architecture Spec";
+    private string newContent = "";
+
+    private string ragSearchQuery = "How does My Platform modular architecture structure domain and contracts?";
+    private RagQueryResponse? ragResult;
+
+    private IEnumerable<AiDocumentDto> FilteredDocuments =>
+        string.IsNullOrWhiteSpace(tableFilter)
+            ? documents
+            : documents.Where(d => d.Title.Contains(tableFilter, StringComparison.OrdinalIgnoreCase) || d.Category.Contains(tableFilter, StringComparison.OrdinalIgnoreCase));
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        loading = true;
+        try
+        {
+            documents = await Http.GetFromJsonAsync<List<AiDocumentDto>>("/api/ai/documents") ?? new();
+        }
+        catch { }
+        finally { loading = false; }
+    }
+
+    private void ToggleIngestForm() => showIngestForm = !showIngestForm;
+
+    private async Task IngestDocument()
+    {
+        ingesting = true;
+        try
+        {
+            var req = new CreateAiDocumentRequest(newTitle, newCategory, newSourceType, newContent);
+            var res = await Http.PostAsJsonAsync("/api/ai/documents", req);
+            if (res.IsSuccessStatusCode)
+            {
+                Snackbar.Add($"Document '{newTitle}' ingested with embeddings successfully!", Severity.Success);
+                newTitle = "";
+                newContent = "";
+                showIngestForm = false;
+                await LoadData();
+            }
+            else
+            {
+                Snackbar.Add("Failed to ingest document.", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            ingesting = false;
+        }
+    }
+
+    private async Task TestRagQuery()
+    {
+        searchingRag = true;
+        try
+        {
+            var req = new RagQueryRequest(ragSearchQuery, 0.65, 3);
+            var res = await Http.PostAsJsonAsync("/api/ai/rag/query", req);
+            if (res.IsSuccessStatusCode)
+            {
+                ragResult = await res.Content.ReadFromJsonAsync<RagQueryResponse>();
+            }
+        }
+        catch { }
+        finally
+        {
+            searchingRag = false;
+        }
+    }
+
+    private async Task DeleteDoc(Guid id)
+    {
+        var res = await Http.DeleteAsync($"/api/ai/documents/{id}");
+        if (res.IsSuccessStatusCode)
+        {
+            Snackbar.Add("Document deleted.", Severity.Success);
+            await LoadData();
+        }
+    }
+}

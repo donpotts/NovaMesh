@@ -1,0 +1,105 @@
+@inject AuthService Auth
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <TitleContent>
+        <div class="d-flex align-center gap-2">
+            <MudIcon Icon="@Icons.Material.Filled.Security" Color="Color.Primary" />
+            <MudText Typo="Typo.h6">Platform Authentication</MudText>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <MudTabs @bind-ActivePanelIndex="activeTabIndex" Rounded="true" Centered="true" Color="Color.Primary" Class="mb-2">
+            <MudTabPanel Text="Sign In" Icon="@Icons.Material.Filled.Login">
+                <div class="pt-3">
+                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">Enter credentials or select a demo account below:</MudText>
+                    <MudTextField @bind-Value="loginUsername" Label="Username or Email" Variant="Variant.Outlined" Class="mb-3" />
+                    <MudTextField @bind-Value="loginPassword" Label="Password" InputType="InputType.Password" Variant="Variant.Outlined" Class="mb-4" />
+                    <MudText Typo="Typo.caption" Color="Color.Secondary" Class="font-weight-bold">1-Click Seeded Accounts:</MudText>
+                    <div class="d-flex flex-wrap gap-2 mt-2 mb-3">
+            <MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick='() => SetUser("admin", "Admin123!")'>Admin (admin)</MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Success" Size="Size.Small" OnClick='() => SetUser("user", "User123!")'>Public Reader (user)</MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Warning" Size="Size.Small" OnClick='() => SetUser("editor", "Editor123!")'>Author (editor)</MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Size="Size.Small" OnClick='() => SetUser("publisher", "Publisher123!")'>Publisher (publisher)</MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Info" Size="Size.Small" OnClick='() => SetUser("moderator", "Moderator123!")'>Moderator (moderator)</MudButton>
+                    </div>
+                    <MudButton Color="Color.Primary" Variant="Variant.Filled" FullWidth="true" OnClick="SubmitLogin" Disabled="@loading" StartIcon="@Icons.Material.Filled.Login">
+                        Sign In
+                    </MudButton>
+                </div>
+            </MudTabPanel>
+
+            <MudTabPanel Text="Create Account" Icon="@Icons.Material.Filled.PersonAdd">
+                <div class="pt-3">
+                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">Create a new user profile on this platform:</MudText>
+                    <MudTextField @bind-Value="regFullName" Label="Full Name" Variant="Variant.Outlined" Class="mb-3" />
+                    <MudTextField @bind-Value="regEmail" Label="Email Address" Variant="Variant.Outlined" Class="mb-3" />
+                    <MudTextField @bind-Value="regUsername" Label="Username" Variant="Variant.Outlined" Class="mb-3" />
+                    <MudTextField @bind-Value="regPassword" Label="Password" InputType="InputType.Password" Variant="Variant.Outlined" Class="mb-4" />
+
+                    <MudButton Color="Color.Secondary" Variant="Variant.Filled" FullWidth="true" OnClick="SubmitRegister" Disabled="@loading" StartIcon="@Icons.Material.Filled.PersonAdd">
+                        Register Account
+                    </MudButton>
+                </div>
+            </MudTabPanel>
+        </MudTabs>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter] public int InitialTab { get; set; } = 0;
+
+    private int activeTabIndex = 0;
+    private string loginUsername = "admin";
+    private string loginPassword = "Admin123!";
+    private string regFullName = "";
+    private string regEmail = "";
+    private string regUsername = "";
+    private string regPassword = "";
+    private bool loading;
+
+    protected override void OnInitialized()
+    {
+        activeTabIndex = InitialTab;
+    }
+
+    private void SetUser(string u, string p) { loginUsername = u; loginPassword = p; }
+
+    private async Task SubmitLogin()
+    {
+        loading = true;
+        var success = await Auth.LoginAsync(loginUsername, loginPassword);
+        loading = false;
+        if (success)
+        {
+            Snackbar.Add($"Signed in as {Auth.CurrentUser?.UserName} ({Auth.CurrentUser?.FullName})", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        else Snackbar.Add("Invalid credentials. Try an account button above.", Severity.Error);
+    }
+
+    private async Task SubmitRegister()
+    {
+        if (string.IsNullOrWhiteSpace(regUsername) || string.IsNullOrWhiteSpace(regPassword))
+        {
+            Snackbar.Add("Username and password are required.", Severity.Warning);
+            return;
+        }
+
+        loading = true;
+        var success = await Auth.RegisterAsync(regUsername, regEmail, regPassword, string.IsNullOrWhiteSpace(regFullName) ? regUsername : regFullName);
+        loading = false;
+        if (success)
+        {
+            Snackbar.Add($"Registration successful! Welcome, {Auth.CurrentUser?.FullName ?? regUsername}", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        else Snackbar.Add("Registration failed. Username or email may already be taken.", Severity.Error);
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

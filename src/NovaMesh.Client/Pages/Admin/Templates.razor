@@ -1,0 +1,331 @@
+@page "/admin/templates"
+@inject HttpClient Http
+@inject ISnackbar Snackbar
+
+<PageTitle>Enterprise Text Templates</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="pa-0">
+    <div class="d-flex justify-space-between align-center mb-4 flex-wrap gap-2">
+        <div>
+            <MudText Typo="Typo.h5" Class="font-weight-bold">
+                <MudIcon Icon="@Icons.Material.Filled.Email" Class="mr-2" Color="Color.Primary" />
+                Enterprise Text & Email Templates
+            </MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                Manage transactional email, SMS, and alert templates with token resolution
+            </MudText>
+        </div>
+        <div class="d-flex gap-2">
+            <MudButton Variant="Variant.Outlined" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Refresh" OnClick="LoadTemplatesAsync">
+                Refresh
+            </MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="@(() => _showCreateDialog = true)">
+                New Template
+            </MudButton>
+        </div>
+    </div>
+
+    <!-- Filters & Search -->
+    <MudCard Elevation="1" Class="pa-4 mb-4">
+        <div class="d-flex gap-4 align-center flex-wrap">
+            <MudTextField @bind-Value="_search" Placeholder="Filter templates by name, subject, or key..." Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Immediate="true" OnKeyUp="LoadTemplatesAsync" Class="flex-grow-1" />
+            <MudSelect T="string" @bind-Value="_selectedCategory" Label="Category" Dense="true" Style="min-width: 160px;" SelectedValuesChanged="LoadTemplatesAsync">
+                <MudSelectItem Value="@("All")">All Categories</MudSelectItem>
+                <MudSelectItem Value="@("Email")">Email</MudSelectItem>
+                <MudSelectItem Value="@("Security")">Security</MudSelectItem>
+                <MudSelectItem Value="@("SMS")">SMS</MudSelectItem>
+            </MudSelect>
+        </div>
+    </MudCard>
+
+    @if (_loading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+    }
+    else
+    {
+        <MudTable Items="@_templates" Elevation="1" Hover="true" Dense="true">
+            <HeaderContent>
+                <MudTh>Template Identifier</MudTh>
+                <MudTh>Display Name</MudTh>
+                <MudTh>Category</MudTh>
+                <MudTh>Culture</MudTh>
+                <MudTh>Subject</MudTh>
+                <MudTh>Available Tokens</MudTh>
+                <MudTh Style="text-align:right">Actions</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Identifier">
+                    <MudText Typo="Typo.subtitle2" Class="font-monospace font-weight-bold">@context.Name</MudText>
+                </MudTd>
+                <MudTd DataLabel="Display Name">
+                    <MudText Typo="Typo.body2">@context.DisplayName</MudText>
+                </MudTd>
+                <MudTd DataLabel="Category">
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="@GetCategoryColor(context.Category)">
+                        @context.Category
+                    </MudChip>
+                </MudTd>
+                <MudTd DataLabel="Culture">
+                    <MudChip T="string" Size="Size.Small" Color="Color.Default">@context.Culture</MudChip>
+                </MudTd>
+                <MudTd DataLabel="Subject">
+                    <MudText Typo="Typo.body2" Class="text-truncate" Style="max-width: 260px;">@context.Subject</MudText>
+                </MudTd>
+                <MudTd DataLabel="Tokens">
+                    <div class="d-flex flex-wrap gap-1" style="max-width: 250px;">
+                        @foreach (var token in context.AvailableTokens.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+                        {
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" Class="px-1 py-0">@token</MudChip>
+                        }
+                    </div>
+                </MudTd>
+                <MudTd DataLabel="Actions" Style="text-align:right">
+                    <MudIconButton Icon="@Icons.Material.Filled.Visibility" Size="Size.Small" Color="Color.Info" aria-label="Preview Render" OnClick="@(() => OpenPreview(context))" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary" aria-label="Edit Template" OnClick="@(() => OpenEdit(context))" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" aria-label="Delete" OnClick="@(() => DeleteTemplateAsync(context))" />
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    }
+</MudContainer>
+
+<!-- Preview Render Dialog -->
+<MudDialog @bind-Visible="_showPreviewDialog">
+    <TitleContent>
+        <div class="d-flex align-center gap-2">
+            <MudIcon Icon="@Icons.Material.Filled.Preview" Color="Color.Info" />
+            <MudText Typo="Typo.h6">Template Render Preview: @_selectedTemplate?.DisplayName</MudText>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        @if (_selectedTemplate != null)
+        {
+            <div class="d-flex flex-column gap-3">
+                <MudPaper Class="pa-3 rounded-lg" Elevation="0" Style="background: rgba(var(--mud-palette-surface-rgb), 0.5); border: 1px solid rgba(255,255,255,0.1);">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary" Class="d-block mb-1">Subject Line:</MudText>
+                    <MudText Typo="Typo.subtitle1" Class="font-weight-bold">@_previewSubject</MudText>
+                </MudPaper>
+                <MudPaper Class="pa-4 rounded-lg" Elevation="0" Style="background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); white-space: pre-wrap; font-family: sans-serif;">
+                    @_previewContent
+                </MudPaper>
+            </div>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton Color="Color.Primary" OnClick="@(() => _showPreviewDialog = false)">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+<!-- Edit Template Dialog -->
+<MudDialog @bind-Visible="_showEditDialog">
+    <TitleContent>
+        <div class="d-flex align-center gap-2">
+            <MudIcon Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" />
+            <MudText Typo="Typo.h6">Edit Template: @_selectedTemplate?.Name</MudText>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        @if (_selectedTemplate != null)
+        {
+            <div class="d-flex flex-column gap-3">
+                <MudTextField @bind-Value="_editSubject" Label="Subject" Required="true" />
+                <MudTextField @bind-Value="_editContent" Label="Template Body" Lines="8" Required="true" />
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Available Tokens: <code>@_selectedTemplate.AvailableTokens</code></MudText>
+            </div>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _showEditDialog = false)">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="SaveEditAsync">Save Changes</MudButton>
+    </DialogActions>
+</MudDialog>
+
+<!-- Create Template Dialog -->
+<MudDialog @bind-Visible="_showCreateDialog">
+    <TitleContent>
+        <div class="d-flex align-center gap-2">
+            <MudIcon Icon="@Icons.Material.Filled.Add" Color="Color.Primary" />
+            <MudText Typo="Typo.h6">Create Custom Text Template</MudText>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <div class="d-flex flex-column gap-3">
+            <MudTextField @bind-Value="_newTemplate.Name" Label="Identifier" Placeholder="e.g. App.Email.InvoicePaid" Required="true" />
+            <MudTextField @bind-Value="_newTemplate.DisplayName" Label="Display Name" Placeholder="e.g. Invoice Receipt Notification" Required="true" />
+            <MudSelect T="string" @bind-Value="_newTemplate.Category" Label="Category">
+                <MudSelectItem Value="@("Email")">Email</MudSelectItem>
+                <MudSelectItem Value="@("Security")">Security</MudSelectItem>
+                <MudSelectItem Value="@("SMS")">SMS</MudSelectItem>
+            </MudSelect>
+            <MudTextField @bind-Value="_newTemplate.Subject" Label="Subject Line" Required="true" />
+            <MudTextField @bind-Value="_newTemplate.Content" Label="Content Body" Lines="6" Required="true" />
+            <MudTextField @bind-Value="_newTemplate.AvailableTokens" Label="Available Tokens" Placeholder="e.g. Tokens list" />
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _showCreateDialog = false)">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="CreateTemplateAsync">Create Template</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private List<TextTemplateDto> _templates = new();
+    private bool _loading = true;
+    private string _search = "";
+    private string _selectedCategory = "All";
+
+    private bool _showPreviewDialog = false;
+    private bool _showEditDialog = false;
+    private bool _showCreateDialog = false;
+
+    private TextTemplateDto? _selectedTemplate;
+    private string _previewSubject = "";
+    private string _previewContent = "";
+
+    private string _editSubject = "";
+    private string _editContent = "";
+
+    private CreateTemplateRequest _newTemplate = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadTemplatesAsync();
+    }
+
+    private async Task LoadTemplatesAsync()
+    {
+        _loading = true;
+        try
+        {
+            var url = "/api/templates?search=" + Uri.EscapeDataString(_search) + "&category=" + Uri.EscapeDataString(_selectedCategory);
+            var result = await Http.GetFromJsonAsync<List<TextTemplateDto>>(url);
+            _templates = result ?? new();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Error loading templates: " + ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void OpenPreview(TextTemplateDto template)
+    {
+        _selectedTemplate = template;
+        string uTok = "{" + "{UserName}" + "}";
+        string sTok = "{" + "{SiteName}" + "}";
+        string tTok = "{" + "{TenantName}" + "}";
+        string ipTok = "{" + "{IpAddress}" + "}";
+        string wTok = "{" + "{WorkspaceUrl}" + "}";
+        string rTok = "{" + "{ResetLink}" + "}";
+        string expTok = "{" + "{ExpiryMinutes}" + "}";
+        string edTok = "{" + "{EditionName}" + "}";
+        string dTok = "{" + "{CustomDomain}" + "}";
+        string aTok = "{" + "{AdminEmail}" + "}";
+        string bTok = "{" + "{BrowserInfo}" + "}";
+        string tsTok = "{" + "{TimestampUtc}" + "}";
+
+        _previewSubject = template.Subject
+            .Replace(uTok, "Alex Morgan")
+            .Replace(sTok, "Enterprise Portal")
+            .Replace(tTok, "Acme Global Dynamics")
+            .Replace(ipTok, "192.168.1.104");
+
+        _previewContent = template.Content
+            .Replace(uTok, "Alex Morgan")
+            .Replace(sTok, "Enterprise Portal")
+            .Replace(tTok, "Acme Global Dynamics")
+            .Replace(wTok, "https://platform.local/workspace")
+            .Replace(rTok, "https://platform.local/auth/reset?token=xyz987")
+            .Replace(expTok, "15")
+            .Replace(edTok, "Enterprise")
+            .Replace(dTok, "acme.platform.local")
+            .Replace(aTok, "admin@acmeglobal.com")
+            .Replace(ipTok, "192.168.1.104")
+            .Replace(bTok, "Chrome 122 on Windows 11")
+            .Replace(tsTok, DateTime.UtcNow.ToString("u"));
+
+        _showPreviewDialog = true;
+    }
+
+    private void OpenEdit(TextTemplateDto template)
+    {
+        _selectedTemplate = template;
+        _editSubject = template.Subject;
+        _editContent = template.Content;
+        _showEditDialog = true;
+    }
+
+    private async Task SaveEditAsync()
+    {
+        if (_selectedTemplate == null) return;
+        try
+        {
+            var req = new UpdateTemplateRequest { Subject = _editSubject, Content = _editContent };
+            var res = await Http.PutAsJsonAsync("/api/templates/" + _selectedTemplate.Id, req);
+            if (res.IsSuccessStatusCode)
+            {
+                Snackbar.Add("Template updated successfully.", Severity.Success);
+                _showEditDialog = false;
+                await LoadTemplatesAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Save failed: " + ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task CreateTemplateAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_newTemplate.Name) || string.IsNullOrWhiteSpace(_newTemplate.Subject))
+        {
+            Snackbar.Add("Identifier and Subject are required.", Severity.Warning);
+            return;
+        }
+
+        try
+        {
+            var res = await Http.PostAsJsonAsync("/api/templates", _newTemplate);
+            if (res.IsSuccessStatusCode)
+            {
+                Snackbar.Add("Template created successfully.", Severity.Success);
+                _showCreateDialog = false;
+                _newTemplate = new();
+                await LoadTemplatesAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Create failed: " + ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task DeleteTemplateAsync(TextTemplateDto template)
+    {
+        try
+        {
+            var res = await Http.DeleteAsync("/api/templates/" + template.Id);
+            if (res.IsSuccessStatusCode)
+            {
+                Snackbar.Add("Template '" + template.Name + "' deleted.", Severity.Info);
+                await LoadTemplatesAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Delete failed: " + ex.Message, Severity.Error);
+        }
+    }
+
+    private Color GetCategoryColor(string cat) => cat switch
+    {
+        "Email" => Color.Primary,
+        "Security" => Color.Warning,
+        "SMS" => Color.Secondary,
+        _ => Color.Default
+    };
+}
