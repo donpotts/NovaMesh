@@ -1,0 +1,370 @@
+@page "/blog"
+@page "/blog/{Slug}"
+@inject HttpClient Http
+@inject ISnackbar Snackbar
+@inject NavigationManager Nav
+
+<PageTitle>Engineering & Architecture Hub | Blog</PageTitle>
+
+@if (activePost != null)
+{
+    <!-- Full Article Reader View -->
+    <div class="mb-4">
+        <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.ArrowBack" Color="Color.Primary" OnClick="BackToList">Back to All Articles</MudButton>
+    </div>
+
+    <MudCard Elevation="3" Class="rounded-xl overflow-hidden mb-8">
+        <div style="height: 380px; position: relative; background: url('@activePost.CoverImageUrl') center/cover no-repeat;">
+            <div style="position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0.2) 0%, rgba(18,18,18,0.95) 100%);"></div>
+            <div style="position: absolute; bottom: 32px; left: 32px; right: 32px;">
+                <div class="d-flex align-center gap-2 mb-2">
+                    <MudChip T="string" Color="Color.Primary" Size="Size.Small" Variant="Variant.Filled">@activePost.Category</MudChip>
+                    <MudChip T="string" Color="Color.Dark" Size="Size.Small"><MudIcon Icon="@Icons.Material.Filled.Schedule" Size="Size.Small" Class="mr-1" />@activePost.ReadMinutes min read</MudChip>
+                    <MudChip T="string" Color="Color.Dark" Size="Size.Small"><MudIcon Icon="@Icons.Material.Filled.Visibility" Size="Size.Small" Class="mr-1" />@activePost.ViewCount views</MudChip>
+                </div>
+                <MudText Typo="Typo.h3" Class="font-weight-bold text-white mb-2">@activePost.Title</MudText>
+                <div class="d-flex align-center gap-3">
+                    <MudAvatar Size="Size.Medium"><MudImage Src="@activePost.AuthorAvatarUrl" /></MudAvatar>
+                    <div>
+                        <MudText Typo="Typo.subtitle2" Class="text-white font-weight-bold">@activePost.AuthorName</MudText>
+                        <MudText Typo="Typo.caption" Class="text-white-50">Published on @(activePost.PublishedAt?.ToString("MMMM dd, yyyy") ?? activePost.CreatedAt.ToString("MMMM dd, yyyy"))</MudText>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <MudCardContent Class="pa-8">
+            <MudText Typo="Typo.h6" Color="Color.Secondary" Class="mb-6 font-italic">
+                "@activePost.ShortDescription"
+            </MudText>
+
+            <MudDivider Class="my-6" />
+
+            <!-- Formatted Markdown Content Body -->
+            <div class="article-body mb-8" style="line-height: 1.8; font-size: 1.1rem;">
+                @foreach (var paragraph in activePost.Content.Split("\n\n"))
+                {
+                    @if (paragraph.StartsWith("### "))
+                    {
+                        <MudText Typo="Typo.h5" Class="font-weight-bold mt-6 mb-3" Color="Color.Primary">@paragraph.Replace("### ", "")</MudText>
+                    }
+                    else if (paragraph.StartsWith("```"))
+                    {
+                        <MudPaper Elevation="0" Class="pa-4 my-4 rounded-lg" Style="background-color: var(--mud-palette-background-grey); font-family: monospace; overflow-x: auto;">
+                            <pre style="margin: 0;"><code>@paragraph.Replace("```csharp", "").Replace("```", "").Trim()</code></pre>
+                        </MudPaper>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.body1" Class="mb-4">@paragraph</MudText>
+                    }
+                }
+            </div>
+
+            <!-- Tags -->
+            <div class="d-flex align-center gap-2 mb-8">
+                <MudText Typo="Typo.subtitle2" Class="font-weight-bold mr-2">Tags:</MudText>
+                @foreach (var tag in activePost.Tags.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+                {
+                    <MudChip T="string" Color="Color.Secondary" Variant="Variant.Outlined" Size="Size.Small">#@tag</MudChip>
+                }
+            </div>
+
+            <!-- Interactive Reactions Bar -->
+            <MudPaper Elevation="1" Class="pa-4 rounded-lg d-flex justify-space-between align-center mb-8 flex-wrap gap-4" Style="background-color: var(--mud-palette-surface);">
+                <div class="d-flex align-center gap-2">
+                    <MudText Typo="Typo.subtitle1" Class="font-weight-bold">React to this article:</MudText>
+                </div>
+                <div class="d-flex align-center gap-2">
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.ThumbUp" OnClick='() => React("Like")'>Like (@activePost.LikeCount)</MudButton>
+                    <MudButton Variant="Variant.Outlined" Color="Color.Error" StartIcon="@Icons.Material.Filled.Favorite" OnClick='() => React("Heart")'>Love</MudButton>
+                    <MudButton Variant="Variant.Outlined" Color="Color.Warning" StartIcon="@Icons.Material.Filled.Celebration" OnClick='() => React("Clap")'>Clap</MudButton>
+                    <MudButton Variant="Variant.Outlined" Color="Color.Info" StartIcon="@Icons.Material.Filled.RocketLaunch" OnClick='() => React("Rocket")'>Rocket</MudButton>
+                </div>
+            </MudPaper>
+
+            <!-- Comments & Discussion -->
+            <MudText Typo="Typo.h5" Class="font-weight-bold mb-4"><MudIcon Icon="@Icons.Material.Filled.Forum" Class="mr-2" />Community Discussion (@comments.Count)</MudText>
+
+            <!-- New Comment Form -->
+            <MudCard Elevation="1" Class="pa-4 mb-6 rounded-lg">
+                <MudText Typo="Typo.subtitle2" Class="font-weight-bold mb-3">Join the Conversation</MudText>
+                <div class="d-flex gap-4 mb-3">
+                    <MudTextField @bind-Value="commentName" Label="Your Name" Variant="Variant.Outlined" Margin="Margin.Dense" Class="flex-grow-1" />
+                    <MudTextField @bind-Value="commentEmail" Label="Your Email" Variant="Variant.Outlined" Margin="Margin.Dense" Class="flex-grow-1" />
+                </div>
+                <MudTextField @bind-Value="commentText" Label="Write a comment..." Variant="Variant.Outlined" Lines="3" Class="mb-3" />
+                <div class="d-flex justify-end">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Send" OnClick="SubmitComment" Disabled="@(string.IsNullOrWhiteSpace(commentName) || string.IsNullOrWhiteSpace(commentText))">Post Comment</MudButton>
+                </div>
+            </MudCard>
+
+            <!-- Comments List -->
+            @foreach (var c in comments)
+            {
+                <MudPaper Elevation="0" Class="pa-4 mb-3 rounded-lg border-solid border mud-border-lines-default">
+                    <div class="d-flex justify-space-between align-center mb-2">
+                        <div class="d-flex align-center gap-2">
+                            <MudAvatar Color="Color.Secondary" Size="Size.Small">@c.AuthorName.FirstOrDefault()</MudAvatar>
+                            <MudText Typo="Typo.subtitle2" Class="font-weight-bold">@c.AuthorName</MudText>
+                        </div>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">@c.CreatedAt.ToString("MMM dd, yyyy")</MudText>
+                    </div>
+                    <MudText Typo="Typo.body2">@c.CommentText</MudText>
+                </MudPaper>
+            }
+        </MudCardContent>
+    </MudCard>
+}
+else
+{
+    <!-- Public Blog Landing Page View -->
+    <div class="mb-6">
+        <div class="d-flex justify-space-between align-center flex-wrap gap-4 mb-2">
+            <div>
+                <div class="d-flex align-center gap-2 mb-1">
+                    <MudChip T="string" Color="Color.Primary" Size="Size.Small">OFFICIAL CMS BLOG</MudChip>
+                    <MudText Typo="Typo.h4" Class="font-weight-bold">Engineering & Architecture Hub</MudText>
+                </div>
+                <MudText Typo="Typo.body1" Color="Color.Secondary">Technical blueprints, deep dives in .NET 10 & MudBlazor, and enterprise architectural insights</MudText>
+            </div>
+            <div class="d-flex gap-2">
+                <MudButton Variant="Variant.Outlined" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Refresh" OnClick="LoadPosts">Refresh</MudButton>
+            </div>
+        </div>
+    </div>
+
+    @if (featuredPost != null && string.IsNullOrWhiteSpace(search) && selectedCategory == "All")
+    {
+        <!-- Featured Hero Story Banner -->
+        <div @onclick="() => SelectPost(featuredPost)">
+            <MudCard Elevation="4" Class="rounded-xl overflow-hidden mb-8 cursor-pointer hover-elevate">
+                <div style="height: 340px; position: relative; background: url('@featuredPost.CoverImageUrl') center/cover no-repeat;">
+                    <div style="position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0.1) 0%, rgba(18,18,18,0.92) 100%);"></div>
+                    <div style="position: absolute; bottom: 28px; left: 28px; right: 28px;">
+                        <div class="d-flex align-center gap-2 mb-2">
+                            <MudChip T="string" Color="Color.Error" Size="Size.Small" Variant="Variant.Filled">FEATURED ARTICLE</MudChip>
+                            <MudChip T="string" Color="Color.Primary" Size="Size.Small">@featuredPost.Category</MudChip>
+                            <MudChip T="string" Color="Color.Dark" Size="Size.Small"><MudIcon Icon="@Icons.Material.Filled.Schedule" Size="Size.Small" Class="mr-1" />@featuredPost.ReadMinutes min</MudChip>
+                        </div>
+                        <MudText Typo="Typo.h4" Class="font-weight-bold text-white mb-2">@featuredPost.Title</MudText>
+                        <MudText Typo="Typo.body1" Class="text-white-50 mb-4" Style="max-width: 800px;">@featuredPost.ShortDescription</MudText>
+                        <div class="d-flex align-center justify-space-between">
+                            <div class="d-flex align-center gap-2">
+                                <MudAvatar Size="Size.Small"><MudImage Src="@featuredPost.AuthorAvatarUrl" /></MudAvatar>
+                                <MudText Typo="Typo.subtitle2" Class="text-white font-weight-bold">@featuredPost.AuthorName</MudText>
+                                <span class="text-white-50">•</span>
+                                <MudText Typo="Typo.caption" Class="text-white-50">@(featuredPost.PublishedAt?.ToString("MMM dd, yyyy") ?? featuredPost.CreatedAt.ToString("MMM dd, yyyy"))</MudText>
+                            </div>
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" EndIcon="@Icons.Material.Filled.ArrowForward">Read Story</MudButton>
+                        </div>
+                    </div>
+                </div>
+            </MudCard>
+        </div>
+    }
+
+    <!-- Search & Category Filter Bar -->
+    <MudCard Elevation="2" Class="pa-4 mb-6 rounded-lg">
+        <div class="d-flex gap-4 align-center flex-wrap">
+            <MudTextField @bind-Value="search" Placeholder="Search 6+ technical blog articles..." Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Immediate="true" OnKeyUp="ApplyFilters" Class="flex-grow-1" />
+            <MudSelect T="string" @bind-Value="selectedCategory" Label="Category" Dense="true" Style="min-width: 180px;" SelectedValuesChanged="ApplyFilters">
+                <MudSelectItem Value="@("All")">All Categories</MudSelectItem>
+                <MudSelectItem Value="@("Frontend & MudBlazor")">Frontend & MudBlazor</MudSelectItem>
+                <MudSelectItem Value="@("Enterprise .NET")">Enterprise .NET</MudSelectItem>
+                <MudSelectItem Value="@("Cloud & Architecture")">Cloud & Architecture</MudSelectItem>
+                <MudSelectItem Value="@("Technology & AI")">Technology & AI</MudSelectItem>
+                <MudSelectItem Value="@("Security & DevOps")">Security & DevOps</MudSelectItem>
+            </MudSelect>
+        </div>
+    </MudCard>
+
+    <!-- Blog Posts Responsive Card Grid -->
+    @if (loading)
+    {
+        <div class="d-flex justify-center pa-8"><MudProgressCircular Indeterminate="true" Color="Color.Primary" /></div>
+    }
+    else if (filteredPosts.Count == 0)
+    {
+        <MudAlert Severity="Severity.Info" Class="my-4">No blog posts found matching your criteria.</MudAlert>
+    }
+    else
+    {
+        <MudGrid>
+            @foreach (var post in filteredPosts)
+            {
+                <MudItem xs="12" sm="6" md="4">
+                    <div @onclick="() => SelectPost(post)" class="h-100">
+                        <MudCard Elevation="3" Class="rounded-lg h-100 d-flex flex-column hover-elevate cursor-pointer">
+                            <MudCardMedia Image="@post.CoverImageUrl" Height="190" />
+                            <MudCardContent Class="flex-grow-1 pb-2">
+                                <div class="d-flex align-center gap-2 mb-2">
+                                    <MudChip T="string" Color="Color.Primary" Size="Size.Small" Variant="Variant.Outlined">@post.Category</MudChip>
+                                    <MudChip T="string" Color="Color.Dark" Size="Size.Small"><MudIcon Icon="@Icons.Material.Filled.Schedule" Size="Size.Small" Class="mr-1" />@post.ReadMinutes m</MudChip>
+                                </div>
+                                <MudText Typo="Typo.h6" Class="font-weight-bold mb-2" Style="line-height: 1.3;">@post.Title</MudText>
+                                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3" Style="display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">@post.ShortDescription</MudText>
+                                <div class="d-flex flex-wrap gap-1">
+                                    @foreach (var tag in post.Tags.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+                                    {
+                                        <span class="mud-typography-caption text-secondary">#@tag</span>
+                                    }
+                                </div>
+                            </MudCardContent>
+                            <MudCardActions Class="d-flex justify-space-between align-center px-4 pb-4">
+                                <div class="d-flex align-center gap-2">
+                                    <MudAvatar Size="Size.Small"><MudImage Src="@post.AuthorAvatarUrl" /></MudAvatar>
+                                    <MudText Typo="Typo.caption" Class="font-weight-bold">@post.AuthorName</MudText>
+                                </div>
+                                <div class="d-flex align-center gap-2">
+                                    <div class="d-flex align-center text-secondary">
+                                        <MudIcon Icon="@Icons.Material.Filled.Visibility" Size="Size.Small" Class="mr-1" />
+                                        <MudText Typo="Typo.caption">@post.ViewCount</MudText>
+                                    </div>
+                                    <div class="d-flex align-center text-secondary">
+                                        <MudIcon Icon="@Icons.Material.Filled.ThumbUp" Size="Size.Small" Color="Color.Primary" Class="mr-1" />
+                                        <MudText Typo="Typo.caption">@post.LikeCount</MudText>
+                                    </div>
+                                </div>
+                            </MudCardActions>
+                        </MudCard>
+                    </div>
+                </MudItem>
+            }
+        </MudGrid>
+    }
+}
+
+@code {
+    [Parameter] public string? Slug { get; set; }
+
+    private List<BlogPostDto> allPosts = new();
+    private List<BlogPostDto> filteredPosts = new();
+    private BlogPostDto? featuredPost;
+    private BlogPostDto? activePost;
+    private List<CmsComment> comments = new();
+    private bool loading = true;
+    private string search = "";
+    private string selectedCategory = "All";
+
+    private string commentName = "";
+    private string commentEmail = "";
+    private string commentText = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadPosts();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (allPosts.Count == 0)
+        {
+            await LoadPosts();
+        }
+
+        if (!string.IsNullOrWhiteSpace(Slug))
+        {
+            var match = allPosts.FirstOrDefault(p => p.Slug.Equals(Slug, StringComparison.OrdinalIgnoreCase));
+            if (match != null)
+            {
+                await SetActivePostAsync(match, updateUrl: false);
+            }
+            else
+            {
+                try
+                {
+                    var post = await Http.GetFromJsonAsync<BlogPostDto>($"/api/cms/blog-posts/{Slug}");
+                    if (post != null) await SetActivePostAsync(post, updateUrl: false);
+                }
+                catch { }
+            }
+        }
+        else
+        {
+            activePost = null;
+        }
+    }
+
+    private async Task LoadPosts()
+    {
+        loading = true;
+        try
+        {
+            var res = await Http.GetFromJsonAsync<PagedResultDto<BlogPostDto>>("/api/cms/blog-posts?pageNumber=1&pageSize=50");
+            allPosts = res?.Items ?? new();
+            featuredPost = allPosts.FirstOrDefault();
+            ApplyFilters();
+        }
+        catch { }
+        finally { loading = false; }
+    }
+
+    private void ApplyFilters()
+    {
+        var q = allPosts.AsEnumerable();
+        if (!string.IsNullOrWhiteSpace(search))
+            q = q.Where(p => p.Title.Contains(search, StringComparison.OrdinalIgnoreCase) || p.ShortDescription.Contains(search, StringComparison.OrdinalIgnoreCase));
+        if (!string.IsNullOrWhiteSpace(selectedCategory) && selectedCategory != "All")
+            q = q.Where(p => p.Category == selectedCategory);
+
+        filteredPosts = q.ToList();
+    }
+
+    private async Task SelectPost(BlogPostDto post)
+    {
+        await SetActivePostAsync(post, updateUrl: true);
+    }
+
+    private async Task SetActivePostAsync(BlogPostDto post, bool updateUrl)
+    {
+        activePost = post;
+        activePost.ViewCount++;
+        if (updateUrl)
+        {
+            Nav.NavigateTo($"/blog/{post.Slug}");
+        }
+        try
+        {
+            comments = await Http.GetFromJsonAsync<List<CmsComment>>($"/api/cms/blog-posts/{post.Id}/comments") ?? new();
+        }
+        catch { }
+    }
+
+    private void BackToList()
+    {
+        activePost = null;
+        Nav.NavigateTo("/blog");
+    }
+
+    private async Task React(string reactionName)
+    {
+        if (activePost == null) return;
+        try
+        {
+            var res = await Http.PostAsJsonAsync($"/api/cms/blog-posts/{activePost.Id}/react", new ReactRequest(reactionName));
+            if (res.IsSuccessStatusCode)
+            {
+                activePost.LikeCount++;
+                Snackbar.Add($"You reacted with {reactionName}!", Severity.Success);
+            }
+        }
+        catch { }
+    }
+
+    private async Task SubmitComment()
+    {
+        if (activePost == null || string.IsNullOrWhiteSpace(commentName) || string.IsNullOrWhiteSpace(commentText)) return;
+        try
+        {
+            var res = await Http.PostAsJsonAsync($"/api/cms/blog-posts/{activePost.Id}/comments", new PostCommentRequest(commentName, commentEmail, commentText));
+            if (res.IsSuccessStatusCode)
+            {
+                comments.Insert(0, new CmsComment { AuthorName = commentName, AuthorEmail = commentEmail, CommentText = commentText, Status = "Approved", CreatedAt = DateTime.UtcNow });
+                commentText = "";
+                Snackbar.Add("Comment posted successfully!", Severity.Success);
+            }
+        }
+        catch { }
+    }
+}

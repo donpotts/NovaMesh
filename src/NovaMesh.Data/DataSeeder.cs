@@ -779,6 +779,165 @@ public static class DataSeeder
             }
         }
 
+        // CMS Kit Blog Hub Module
+        if (!await db.Blogs.AnyAsync())
+        {
+            logger("  [+] Seeding CMS Kit Blog Hub");
+            var blogId = Guid.Parse("11111111-2222-3333-4444-555555555555");
+            db.Blogs.Add(new Blog
+            {
+                Id = blogId,
+                Name = "Engineering & Architecture Hub",
+                Slug = "engineering-hub",
+                Description = "Deep-dive technical perspectives, architectural blueprints, and engineering excellence across .NET, MudBlazor, and distributed cloud systems."
+            });
+            await db.SaveChangesAsync();
+
+            if (!await db.BlogPosts.AnyAsync())
+            {
+                logger("  [+] Seeding CMS Kit Rich Technical Blog Posts (6+ Articles)");
+                var post1Id = Guid.Parse("aaaaaaaa-1111-2222-3333-444444444441");
+                var post2Id = Guid.Parse("aaaaaaaa-1111-2222-3333-444444444442");
+                var post3Id = Guid.Parse("aaaaaaaa-1111-2222-3333-444444444443");
+                var post4Id = Guid.Parse("aaaaaaaa-1111-2222-3333-444444444444");
+                var post5Id = Guid.Parse("aaaaaaaa-1111-2222-3333-444444444445");
+                var post6Id = Guid.Parse("aaaaaaaa-1111-2222-3333-444444444446");
+
+                db.BlogPosts.AddRange(
+                    new BlogPost
+                    {
+                        Id = post1Id,
+                        BlogId = blogId,
+                        Title = "Building High-Velocity Micro-Frontends with Blazor WebAssembly and MudBlazor",
+                        Slug = "building-micro-frontends-blazor-mudblazor",
+                        ShortDescription = "How to architect responsive single-page web applications with C# WebAssembly, reusable Material components, and client-side reactive state.",
+                        Content = "### Executive Summary\nModern enterprise portals demand both high developer velocity and silky-smooth client experiences. Blazor WebAssembly enables teams to author entire user experiences in C# without abandoning rich component libraries.\n\n### Architectural Pillars\n1. **Typed Component Hierarchy**: MudBlazor primitives deliver cohesive Material Design aesthetics.\n2. **Zero JavaScript Overhead**: C# 13/14 language features handle DOM bindings seamlessly.\n3. **Reactive State**: Observables and event callbacks streamline state propagation.\n\n```csharp\n@inject ISnackbar Snackbar\n\n<MudButton Variant=\"Variant.Filled\" Color=\"Color.Primary\" OnClick=\"RefreshData\">\n    Sync Workspace\n</MudButton>\n```\n\nBy leveraging MudBlazor's layout components and theme providers, cross-functional engineering teams maintain design consistency across multiple decoupled feature modules.",
+                        CoverImageUrl = "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=1200&q=80",
+                        AuthorName = "Elena Fisher",
+                        AuthorAvatarUrl = "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=120&q=80",
+                        Category = "Frontend & MudBlazor",
+                        Tags = "MudBlazor, BlazorWASM, UI, Architecture",
+                        ReadMinutes = 7,
+                        ViewCount = 2480,
+                        LikeCount = 142,
+                        IsPublished = true,
+                        CreatedAt = DateTime.UtcNow.AddDays(-14),
+                        PublishedAt = DateTime.UtcNow.AddDays(-14)
+                    },
+                    new BlogPost
+                    {
+                        Id = post2Id,
+                        BlogId = blogId,
+                        Title = "Domain-Driven Design with My Platform: Tactical Patterns in .NET 10",
+                        Slug = "domain-driven-design-my-platform-dotnet-10",
+                        ShortDescription = "Exploring aggregates, repositories, domain services, and multi-tenancy filters inside My Platform modular enterprise architectures.",
+                        Content = "### Tactical DDD Overview\nDomain-Driven Design provides an indispensable vocabulary for managing enterprise complexity. My Platform formalizes tactical patterns into reusable building blocks.\n\n### Core Building Blocks\n- **Entities and Aggregate Roots**: Safeguard domain invariants and emit distributed domain events.\n- **Application Services**: Expose clean contract boundaries decouple UI from core business logic.\n- **Data Filters**: Built-in automatic query filtering for soft deletes and multi-tenant scoping.\n\n```csharp\npublic class IssueAggregate : FullAuditedAggregateRoot<Guid>, IMultiTenant\n{\n    public Guid? TenantId { get; set; }\n    public string Title { get; private set; }\n    public IssueState State { get; private set; }\n}\n```\n\nAdopting these patterns drastically cuts technical debt in multi-team organizations.",
+                        CoverImageUrl = "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&w=1200&q=80",
+                        AuthorName = "Marcus Vance",
+                        AuthorAvatarUrl = "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=120&q=80",
+                        Category = "Enterprise .NET",
+                        Tags = ".NET 10, My Platform, DDD, Clean Architecture",
+                        ReadMinutes = 9,
+                        ViewCount = 3120,
+                        LikeCount = 215,
+                        IsPublished = true,
+                        CreatedAt = DateTime.UtcNow.AddDays(-10),
+                        PublishedAt = DateTime.UtcNow.AddDays(-10)
+                    },
+                    new BlogPost
+                    {
+                        Id = post3Id,
+                        BlogId = blogId,
+                        Title = "Zero-Downtime Multi-Tenancy Architecture: Tenant Isolation Strategies",
+                        Slug = "zero-downtime-multi-tenancy-architecture",
+                        ShortDescription = "Compare shared database schemas against database-per-tenant paradigms with automatic migrations and cross-tenant guardrails.",
+                        Content = "### The SaaS Tenancy Spectrum\nDesigning a multi-tenant backend involves balancing cost efficiency against data isolation guarantees.\n\n### Tenancy Models\n- **Shared Database, Shared Schema**: High tenant density, low hosting overhead. Protected via EF Core Global Query Filters (`HasQueryFilter(e => e.TenantId == CurrentTenant.Id)`).\n- **Database Per Tenant**: Absolute physical isolation for enterprise compliance and dedicated backup lifecycles.\n- **Hybrid Model**: Small accounts share pools while enterprise accounts receive dedicated instances dynamically.\n\nABP's SaaS module handles dynamic connection string resolution seamlessly at runtime.",
+                        CoverImageUrl = "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1200&q=80",
+                        AuthorName = "System Administrator",
+                        AuthorAvatarUrl = "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=120&q=80",
+                        Category = "Cloud & Architecture",
+                        Tags = "Multi-Tenancy, SaaS, SQL Server, Cloud",
+                        ReadMinutes = 8,
+                        ViewCount = 1890,
+                        LikeCount = 98,
+                        IsPublished = true,
+                        CreatedAt = DateTime.UtcNow.AddDays(-8),
+                        PublishedAt = DateTime.UtcNow.AddDays(-8)
+                    },
+                    new BlogPost
+                    {
+                        Id = post4Id,
+                        BlogId = blogId,
+                        Title = "Autonomous Coding Agents and REA MCP: Reverse Engineering at Scale",
+                        Slug = "autonomous-agents-rea-mcp-reverse-engineering",
+                        ShortDescription = "Deep dive into Model Context Protocol integration, browser CDP headless telemetry, and decompilation-guided software reconstruction.",
+                        Content = "### Next-Gen Agentic Toolchains\nAutonomous agent workflows require grounding in concrete runtime artifacts. REA (Reverse Engineering Anything) bridges the gap between binary analysis and agent tool calling.\n\n### Telemetry Integration\n- **Runtime Browser Automation**: Real-time Chrome DevTools Protocol inspection of DOM trees and console messages.\n- **Headless Screenshot Auditing**: Multi-resolution rendering validation verifying pixel layout and CSS responsiveness.\n- **Binary Symbol Recovery**: Managed artifact member inspection extracting accurate API contracts.\n\nCoupling these tools with high-fidelity agents enables rapid zero-defect modernization.",
+                        CoverImageUrl = "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1200&q=80",
+                        AuthorName = "Sofia Chen",
+                        AuthorAvatarUrl = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=120&q=80",
+                        Category = "Technology & AI",
+                        Tags = "AI, MCP, Reverse Engineering, REA",
+                        ReadMinutes = 11,
+                        ViewCount = 4210,
+                        LikeCount = 340,
+                        IsPublished = true,
+                        CreatedAt = DateTime.UtcNow.AddDays(-5),
+                        PublishedAt = DateTime.UtcNow.AddDays(-5)
+                    },
+                    new BlogPost
+                    {
+                        Id = post5Id,
+                        BlogId = blogId,
+                        Title = "High-Throughput Audit Logging with EF Core 10 Interceptors",
+                        Slug = "high-throughput-audit-logging-efcore-10",
+                        ShortDescription = "Capture granular change logs, actor context, and timing metrics without polluting application domain models.",
+                        Content = "### Why Audit Logging Matters\nIn regulated environments, compliance mandates immutable ledgers of who performed what modification and when.\n\n### The Interceptor Advantage\nRather than cluttering business methods with logging calls, EF Core `ISaveChangesInterceptor` intercepts every transaction before and after database writes.\n\n```csharp\npublic override ValueTask<InterceptionResult<int>> SavingChangesAsync(\n    DbContextEventData eventData, InterceptionResult<int> result, CancellationToken token)\n{\n    // Extract modified entities and generate audit entries\n    return base.SavingChangesAsync(eventData, result, token);\n}\n```\n\nThis guarantees 100% audit coverage with negligible runtime overhead.",
+                        CoverImageUrl = "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=1200&q=80",
+                        AuthorName = "Elena Fisher",
+                        AuthorAvatarUrl = "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=120&q=80",
+                        Category = "Security & DevOps",
+                        Tags = "Audit Trails, EF Core, Security, .NET 10",
+                        ReadMinutes = 6,
+                        ViewCount = 1650,
+                        LikeCount = 84,
+                        IsPublished = true,
+                        CreatedAt = DateTime.UtcNow.AddDays(-3),
+                        PublishedAt = DateTime.UtcNow.AddDays(-3)
+                    },
+                    new BlogPost
+                    {
+                        Id = post6Id,
+                        BlogId = blogId,
+                        Title = "Interactive API Documentation with Scalar & ASP.NET Core Minimal APIs",
+                        Slug = "interactive-api-docs-scalar-minimal-apis",
+                        ShortDescription = "Ditch legacy Swagger UI for Scalar's modern Mars theme, built-in C# and curl code samples, and blazing fast OpenAPI explorer.",
+                        Content = "### Modernizing Developer Portals\nTraditional Swagger UI has served developers for a decade, but modern API documentation requires interactive client generation and lightning-fast search.\n\n### Integrating Scalar\nScalar integrates directly with .NET 10's built-in `Microsoft.AspNetCore.OpenApi` package.\n\n```csharp\nbuilder.Services.AddOpenApi();\n\napp.MapOpenApi();\napp.MapScalarApiReference(options => {\n    options.WithTitle(\"Nexus API Reference\")\n           .WithTheme(ScalarTheme.Mars);\n});\n```\n\nDevelopers can test endpoints, copy generated HttpClient requests, and explore payloads effortlessly.",
+                        CoverImageUrl = "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1200&q=80",
+                        AuthorName = "Marcus Vance",
+                        AuthorAvatarUrl = "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=120&q=80",
+                        Category = "Enterprise .NET",
+                        Tags = "Scalar API, OpenAPI, Minimal APIs, Developer Velocity",
+                        ReadMinutes = 5,
+                        ViewCount = 2200,
+                        LikeCount = 160,
+                        IsPublished = true,
+                        CreatedAt = DateTime.UtcNow.AddDays(-1),
+                        PublishedAt = DateTime.UtcNow.AddDays(-1)
+                    }
+                );
+                await db.SaveChangesAsync();
+
+                // Seed Reactions
+                db.Reactions.AddRange(
+                    new BlogPostReaction { BlogPostId = post1Id, ReactionName = "Like", UserName = "admin" },
+                    new BlogPostReaction { BlogPostId = post1Id, ReactionName = "Heart", UserName = "user" },
+                    new BlogPostReaction { BlogPostId = post2Id, ReactionName = "Clap", UserName = "editor" },
+                    new BlogPostReaction { BlogPostId = post4Id, ReactionName = "Rocket", UserName = "publisher" }
+                );
+                await db.SaveChangesAsync();
+            }
+        }
+
         // Domain Sample Entities
             if (!await db.CloudResources.AnyAsync())
             {

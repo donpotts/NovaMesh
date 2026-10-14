@@ -46,6 +46,12 @@ public class AppDbContext : DbContext
     public DbSet<DistributedOrder> DistributedOrders => Set<DistributedOrder>();
     public DbSet<DistributedTraceRecord> TraceRecords => Set<DistributedTraceRecord>();
 
+    // CMS Kit Blog Hub
+    public DbSet<Blog> Blogs => Set<Blog>();
+    public DbSet<BlogPost> BlogPosts => Set<BlogPost>();
+    public DbSet<BlogPostReaction> Reactions => Set<BlogPostReaction>();
+    public DbSet<CmsComment> Comments => Set<CmsComment>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);

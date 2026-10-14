@@ -20,6 +20,20 @@ public class ApiIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
     }
 
     [Fact]
+    public async Task GetBlogs_Public_ReturnsOk()
+    {
+        var response = await _client.GetAsync("/api/cms/blogs");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetBlogPosts_Public_ReturnsOk()
+    {
+        var response = await _client.GetAsync("/api/cms/blog-posts");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
     public async Task AdminLogin_WithDefaultCredentials_ReturnsJwtToken()
     {
         var response = await _client.PostAsJsonAsync("/api/auth/login", new { UserName = "admin", Password = "Admin123!" });

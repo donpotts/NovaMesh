@@ -1322,6 +1322,79 @@ app.MapPost("/api/aspire/simulate-fault", async (FaultSimulationRequest req, App
     return Results.Ok(new { message = $"Simulated fault '{req.FaultType}' handled successfully by Polly resilience pipeline.", latencyMs = sw.ElapsedMilliseconds, traceId });
 }).WithName("SimulateFault").WithSummary("Test Polly resilience, retry pipelines, and OpenTelemetry error logging");
 
+// -------------------------------------------------------------
+// CMS Kit Blog Hub Module Endpoints (Blogs, Posts, Reactions, Comments)
+// -------------------------------------------------------------
+app.MapGet("/api/cms/blogs", async (AppDbContext db) =>
+{
+    var blogs = await db.Blogs.OrderBy(b => b.Name).ToListAsync();
+    return Results.Ok(blogs.Select(b => new BlogDto(b.Id, b.Name, b.Slug, b.Description, b.CreatedAt)));
+}).WithName("GetBlogs").WithSummary("List all publication blogs");
+
+app.MapGet("/api/cms/blog-posts", async (string? search, string? category, string? tag, int pageNumber = 1, int pageSize = 12, AppDbContext db = null!) =>
+{
+    var query = db.BlogPosts.Where(p => p.IsPublished).AsQueryable();
+    if (!string.IsNullOrWhiteSpace(search))
+        query = query.Where(p => p.Title.Contains(search) || p.ShortDescription.Contains(search) || p.Content.Contains(search));
+    if (!string.IsNullOrWhiteSpace(category) && category != "All")
+        query = query.Where(p => p.Category == category);
+    if (!string.IsNullOrWhiteSpace(tag))
+        query = query.Where(p => p.Tags.Contains(tag));
+
+    var total = await query.CountAsync();
+    var items = await query.OrderByDescending(p => p.PublishedAt ?? p.CreatedAt)
+                           .Skip((pageNumber - 1) * pageSize)
+                           .Take(pageSize)
+                           .ToListAsync();
+
+    var dtos = items.Select(p => new BlogPostDto(p.Id, p.BlogId, p.Title, p.Slug, p.ShortDescription, p.Content, p.CoverImageUrl, p.AuthorName, p.AuthorAvatarUrl, p.Category, p.Tags, p.ReadMinutes, p.ViewCount, p.LikeCount, p.IsPublished, p.CreatedAt, p.PublishedAt)).ToList();
+    return Results.Ok(new PagedResultDto<BlogPostDto>(dtos, total, pageNumber, pageSize));
+}).WithName("GetBlogPosts").WithSummary("List published blog posts with search and category filters");
+
+app.MapGet("/api/cms/blog-posts/{slug}", async (string slug, AppDbContext db) =>
+{
+    var post = await db.BlogPosts.FirstOrDefaultAsync(p => p.Slug == slug);
+    if (post == null && Guid.TryParse(slug, out var gid))
+        post = await db.BlogPosts.FindAsync(gid);
+    if (post == null) return Results.NotFound();
+    post.ViewCount++;
+    await db.SaveChangesAsync();
+    return Results.Ok(new BlogPostDto(post.Id, post.BlogId, post.Title, post.Slug, post.ShortDescription, post.Content, post.CoverImageUrl, post.AuthorName, post.AuthorAvatarUrl, post.Category, post.Tags, post.ReadMinutes, post.ViewCount, post.LikeCount, post.IsPublished, post.CreatedAt, post.PublishedAt));
+}).WithName("GetBlogPostBySlug").WithSummary("Retrieve article details by slug or Guid");
+
+app.MapPost("/api/cms/blog-posts/{id:guid}/react", async (Guid id, ReactRequest req, ClaimsPrincipal user, AppDbContext db) =>
+{
+    var post = await db.BlogPosts.FindAsync(id);
+    if (post == null) return Results.NotFound();
+    var userName = user.Identity?.Name ?? "anonymous";
+    var reaction = new BlogPostReaction { BlogPostId = id, ReactionName = req.ReactionName, UserName = userName };
+    db.Reactions.Add(reaction);
+    post.LikeCount++;
+    await db.SaveChangesAsync();
+    return Results.Ok(new { likeCount = post.LikeCount, reaction = req.ReactionName });
+}).WithName("ReactToBlogPost").WithSummary("Add emoji reaction to blog post");
+
+app.MapGet("/api/cms/blog-posts/{id:guid}/comments", async (Guid id, AppDbContext db) =>
+{
+    var comments = await db.Comments.OrderByDescending(c => c.CreatedAt).ToListAsync();
+    return Results.Ok(comments);
+}).WithName("GetBlogPostComments").WithSummary("List all comments for a blog post");
+
+app.MapPost("/api/cms/blog-posts/{id:guid}/comments", async (Guid id, PostCommentRequest req, AppDbContext db) =>
+{
+    var comment = new CmsComment
+    {
+        ArticleId = 1,
+        AuthorName = req.AuthorName,
+        AuthorEmail = req.AuthorEmail,
+        CommentText = req.CommentText,
+        Status = "Approved"
+    };
+    db.Comments.Add(comment);
+    await db.SaveChangesAsync();
+    return Results.Created($"/api/cms/comments/{comment.Id}", comment);
+}).WithName("PostBlogPostComment").WithSummary("Post a discussion comment to a blog post");
+
 app.MapFallbackToFile("index.html");
 
 app.Run();
