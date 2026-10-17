@@ -1,0 +1,27 @@
+name: novamesh
+
+services:
+  api:
+    container_name: novamesh-api
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "5000:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__Default=Data Source=/app/data/app.db
+    volumes:
+      - novamesh_data:/app/data
+    restart: unless-stopped
+
+  redis:
+    container_name: novamesh-redis
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
+volumes:
+  novamesh_data:

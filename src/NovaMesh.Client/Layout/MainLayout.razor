@@ -103,7 +103,8 @@
             </ChildContent>
         </MudMenu>
 
-        <!-- Blog Hub Quick Link -->
+        <!-- Context-Aware Quick Links & Blog Hub -->
+        <MudButton Variant="Variant.Text" Color="Color.Inherit" StartIcon="@Icons.Material.Filled.Speed" OnClick='() => Nav.NavigateTo("/aspire/telemetry")' Class="d-none d-md-inline-flex mr-1">Telemetry</MudButton>
         <MudButton Variant="Variant.Text" Color="Color.Inherit" StartIcon="@Icons.Material.Filled.RssFeed" OnClick='() => Nav.NavigateTo("/blog")' Class="d-none d-md-inline-flex mr-1">Blog</MudButton>
 
         @if (Auth.IsAuthenticated)
@@ -248,6 +249,7 @@
             {
                 <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">Home</MudNavLink>
                 <MudNavLink Href="/aspire/telemetry" Icon="@Icons.Material.Filled.Speed">Aspire Telemetry & Resilience</MudNavLink>
+                <MudNavLink Href="/blog" Icon="@Icons.Material.Filled.RssFeed">Public Blog Hub</MudNavLink>
                 <MudNavLink Href="http://localhost:5000/scalar/v1" Target="_blank" Icon="@Icons.Material.Filled.Api">Scalar API Docs <MudIcon Icon="@Icons.Material.Filled.OpenInNew" Size="Size.Small" Class="ml-1" /></MudNavLink>
 
                 <MudDivider Class="my-3" />
@@ -280,6 +282,7 @@
 
             <MudNavGroup Title="Aspire & Cloud Ops" Icon="@Icons.Material.Filled.Cloud" Expanded="true">
                 <MudNavLink Href="/aspire/telemetry" Icon="@Icons.Material.Filled.Speed">Distributed Telemetry & Resilience</MudNavLink>
+                <MudNavLink Href="/blog" Icon="@Icons.Material.Filled.RssFeed">Engineering Blog Hub</MudNavLink>
             </MudNavGroup>
 
                 <MudNavGroup Title="Identity & Tenants" Icon="@Icons.Material.Filled.AdminPanelSettings" Expanded="true">
