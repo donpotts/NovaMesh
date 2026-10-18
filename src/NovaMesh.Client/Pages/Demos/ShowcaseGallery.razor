@@ -1,0 +1,129 @@
+@page "/demos/gallery"
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+
+<PageTitle>Interactive Showcase Gallery - NovaMesh</PageTitle>
+
+<MudPaper Elevation="0" Class="pa-5 mb-5 rounded-xl" Style="background: linear-gradient(135deg, #0f172a 0%, #3b0764 55%, #1e1b4b 100%); color: white; border: 1px solid rgba(236,72,153,0.35);">
+    <div class="d-flex justify-space-between align-center flex-wrap gap-3">
+        <div>
+            <div class="d-flex align-center gap-2 mb-1">
+                <MudChip T="string" Size="Size.Small" Style="background: rgba(236,72,153,0.25); color: #F472B6; font-weight: 800;">📸 VISUAL SHOWCASE</MudChip>
+                <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Outlined">12 Interactive Modules • E2E Verified</MudChip>
+            </div>
+            <MudText Typo="Typo.h4" Class="font-weight-bold">📸 Interactive Platform Showcase & Feature Tour</MudText>
+            <MudText Typo="Typo.body2" Style="color: #FBCFE8;">Explore and launch every vertical command center, distributed cloud monitor, AI agent workbench, and dynamic CRUD module</MudText>
+        </div>
+        <div class="d-flex gap-2">
+            <MudButton id="btn-run-benchmark-link" Variant="Variant.Filled" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Speed" OnClick='() => Nav.NavigateTo("/demos/benchmark")'>
+                ⚡ Live API Benchmark
+            </MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Inherit" StartIcon="@Icons.Material.Filled.AccountTree" OnClick='() => Nav.NavigateTo("/demos/architecture")'>
+                🗺️ Live Schema (32 Tables)
+            </MudButton>
+        </div>
+    </div>
+</MudPaper>
+
+<!-- Category Filter Bar -->
+<div class="d-flex justify-space-between align-center flex-wrap gap-2 mb-4">
+    <div class="d-flex gap-2 flex-wrap">
+        @foreach (var cat in _categories)
+        {
+            <MudButton Variant="@(_selectedCategory == cat ? Variant.Filled : Variant.Outlined)"
+                       Color="@(_selectedCategory == cat ? Color.Primary : Color.Default)"
+                       Size="Size.Small"
+                       OnClick="@(() => _selectedCategory = cat)">
+                @cat
+            </MudButton>
+        }
+    </div>
+    <MudTextField @bind-Value="_search" Placeholder="Search showcase modules..." Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Margin="Margin.Dense" Variant="Variant.Outlined" Style="max-width: 280px;" Immediate="true" />
+</div>
+
+<MudGrid>
+    @foreach (var item in FilteredShowcase)
+    {
+        <MudItem xs="12" md="6" lg="4">
+            <MudCard Elevation="3" Class="rounded-xl h-100 d-flex flex-column justify-space-between" Style="@($"border-top: 4px solid {item.AccentColor}; overflow: hidden;")">
+                <div class="pa-4" style="@($"background: linear-gradient(135deg, {item.BannerBg} 0%, rgba(15,23,42,0.95) 100%); border-bottom: 1px solid rgba(148,163,184,0.15);")">
+                    <div class="d-flex justify-space-between align-center mb-2">
+                        <MudChip T="string" Size="Size.Small" Style="@($"background: {item.AccentColor}33; color: {item.AccentColor}; font-weight: 700;")">@item.Category</MudChip>
+                        <code style="font-size: 0.72rem; color: #94A3B8;">@item.Route</code>
+                    </div>
+                    <MudText Typo="Typo.h6" Class="font-weight-bold text-white">@item.Title</MudText>
+                </div>
+                <MudCardContent Class="flex-grow-1">
+                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">@item.Description</MudText>
+                    <div class="d-flex flex-wrap gap-1">
+                        @foreach (var tag in item.Tags)
+                        {
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Default" Style="font-size: 0.68rem;">@tag</MudChip>
+                        }
+                    </div>
+                </MudCardContent>
+                <MudCardActions Class="pa-4 pt-0">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true" EndIcon="@Icons.Material.Filled.ArrowForward" OnClick="@(() => Nav.NavigateTo(item.Route))">
+                        🚀 Launch Live Experience
+                    </MudButton>
+                </MudCardActions>
+            </MudCard>
+        </MudItem>
+    }
+</MudGrid>
+
+@code {
+    private string _selectedCategory = "All";
+    private string _search = "";
+    private readonly string[] _categories = new[] { "All", "Vertical Demos", "Cloud & Telemetry", "AI & Enterprise", "Dynamic CRUD" };
+
+    private record ShowcaseCard(string Title, string Category, string Route, string Description, string AccentColor, string BannerBg, string[] Tags);
+
+    private readonly List<ShowcaseCard> _cards = new()
+    {
+        new("🛡️ AegisCyber SOC Radar", "Vertical Demos", "/demos/cyber-soc",
+            "Autonomous Zero-Trust Security Operations Center with live eBPF packet stream, DEFCON 2 zero-day attack simulator, and 1-click IP quarantine.",
+            "#EC4899", "#500724", new[] { "eBPF Packet Stream", "Zero-Day Simulator", "SPIFFE mTLS" }),
+        new("📈 QuantFlow FinTech Desk", "Vertical Demos", "/demos/quant-terminal",
+            "Institutional algorithmic trading desk featuring sub-millisecond triangular flash-arbitrage simulation, Sharpe/Sortino alpha KPIs, and L2 order book.",
+            "#10B981", "#064E3B", new[] { "Flash Arbitrage", "Sharpe 3.48", "Multi-Venue L2" }),
+        new("🩺 PulseMed Smart ICU Triage", "Vertical Demos", "/demos/med-triage",
+            "HL7 FHIR R4 multi-bed patient telemetry monitor with real-time SVG ECG waveforms, AI NEWS2 sepsis risk scoring, and emergency admission dispatch.",
+            "#06B6D4", "#083344", new[] { "HL7 FHIR R4", "Live SVG ECG", "NEWS2 Sepsis AI" }),
+        new("🗺️ Live Schema & Architecture", "Cloud & Telemetry", "/demos/architecture",
+            "Real-time SQLite database schema introspection (sqlite_master + PRAGMA table_info) visualizing 32+ live tables, primary keys, and row counts.",
+            "#6366F1", "#1E1B4B", new[] { "32 SQLite Tables", "PRAGMA Introspection", "4-Tier Topology" }),
+        new("⚡ Live API Load Benchmark", "Cloud & Telemetry", "/demos/benchmark",
+            "Interactive HTTP latency & throughput benchmark runner measuring real P50 / P95 / P99 response times across live Minimal API endpoints.",
+            "#F59E0B", "#451A03", new[] { "P50 / P99 Latency", "Burst Load Test", "200 OK Verification" }),
+        new("☁️ Aspire Cloud Telemetry", "Cloud & Telemetry", "/aspire/telemetry",
+            "Distributed microservice health monitor, OpenTelemetry W3C trace waterfall inspector, cross-service transaction ledger, and Polly chaos fault simulator.",
+            "#3B82F6", "#172554", new[] { ".NET Aspire 13.6", "W3C Trace Waterfall", "Polly Circuit Breaker" }),
+        new("🤖 AI Agent & RAG Workbench", "AI & Enterprise", "/ai/agent",
+            "Multi-persona autonomous AI assistant with semantic RAG citations, tool-calling execution trace, and Ollama / fallback synthesis.",
+            "#8B5CF6", "#2E1065", new[] { "Autonomous Tools", "Semantic RAG", "Multi-Persona" }),
+        new("📚 Vector RAG Knowledge Base", "AI & Enterprise", "/ai/knowledge",
+            "Document chunking, vector embedding indexing, and cosine similarity semantic search playground.",
+            "#A855F7", "#3B0764", new[] { "Vector Chunks", "Cosine Similarity", "Document Ingestion" }),
+        new("🎨 SaaS Multi-Tenant Branding", "AI & Enterprise", "/admin/tenants",
+            "Dynamic multi-tenant isolation with instant live theme color switching, custom domain routing, and edition tiers.",
+            "#14B8A6", "#042F2E", new[] { "Live Theme Switcher", "Tenant Isolation", "Custom Domains" }),
+        new("📰 Editorial Blog & CMS Hub", "Dynamic CRUD", "/blog",
+            "Public & editorial Markdown article publishing hub with star ratings, reading time estimation, and resilient offline fallback.",
+            "#F43F5E", "#4C0519", new[] { "Markdown Publishing", "Star Ratings", "Resilient Fallback" }),
+        new("🔔 SignalR Real-Time Notifications", "Dynamic CRUD", "/admin/notifications",
+            "WebSocket event broadcast mesh (/hubs/events) with always-on top-bar notification bell and live event stream.",
+            "#0EA5E9", "#0C4A6E", new[] { "SignalR Hub", "Live Broadcast", "Instant Toast" }),
+        new("🩺 System Health & Diagnostics", "Cloud & Telemetry", "/admin/health",
+            "Real-time CLR garbage collection metrics, thread pool telemetry, SQLite latency probe, and storage utilization.",
+            "#22C55E", "#052E16", new[] { "CLR GC Telemetry", "DB Latency Probe", "Liveness Checks" })
+    };
+
+    private IEnumerable<ShowcaseCard> FilteredShowcase =>
+        _cards.Where(c =>
+            (_selectedCategory == "All" || c.Category == _selectedCategory) &&
+            (string.IsNullOrWhiteSpace(_search) ||
+             c.Title.Contains(_search, StringComparison.OrdinalIgnoreCase) ||
+             c.Description.Contains(_search, StringComparison.OrdinalIgnoreCase) ||
+             c.Tags.Any(t => t.Contains(_search, StringComparison.OrdinalIgnoreCase))));
+}

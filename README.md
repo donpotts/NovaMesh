@@ -16,7 +16,7 @@
 [![Polly](https://img.shields.io/badge/Polly-Circuit%20Breakers%20%26%20Resilience-007ACC?style=for-the-badge)](https://github.com/App-vNext/Polly)
 [![MudBlazor](https://img.shields.io/badge/MudBlazor-8.2.0%20WASM-7E6FFF?style=for-the-badge&logo=blazor&logoColor=white)](https://mudblazor.com/)
 [![Scalar](https://img.shields.io/badge/API%20Docs-Scalar%20OpenAPI%203.1-00D47E?style=for-the-badge)](https://scalar.com)
-[![Showcase Gallery](https://img.shields.io/badge/📸%20Photo%20Gallery-23%20Verified%20Screenshots-EC4899?style=for-the-badge)](SHOWCASE_GALLERY.md)
+[![Showcase Gallery](https://img.shields.io/badge/📸%20Photo%20Gallery-26%20Verified%20Screenshots-EC4899?style=for-the-badge)](SHOWCASE_GALLERY.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](LICENSE)
 
 ---
@@ -35,11 +35,13 @@
 Designed to showcase the bleeding edge of cloud-native architecture, NovaMesh provides:
 1. **Dynamic Service Discovery & AppHost Orchestration** with Docker Desktop integration.
 2. **End-to-End OpenTelemetry Observability** featuring custom `ActivitySource` W3C trace waterfalls and structured telemetry.
-3. **4 Interactive Industry Vertical Demos** built in:
+3. **6 Interactive Showcase & Industry Vertical Experiences** built in:
+   - **📸 Interactive Platform Showcase (`/demos/gallery`)**: Filterable 12-module visual launcher & **⚡ Quick Jump Command Palette**.
    - **🛡️ AegisCyber SOC Radar (`/demos/cyber-soc`)**: eBPF packet stream, zero-day attack simulator & 1-click IP quarantine.
    - **📈 QuantFlow FinTech Desk (`/demos/quant-terminal`)**: Sub-millisecond triangular flash-arbitrage simulator & live blotter.
    - **🩺 PulseMed ICU Triage (`/demos/med-triage`)**: HL7 FHIR R4 multi-bed ECG vital telemetry & AI NEWS2 sepsis triage.
    - **🗺️ Live Schema & Architecture Explorer (`/demos/architecture`)**: Real-time `sqlite_master` + `PRAGMA table_info` database introspection across 32 tables.
+   - **⚡ Live API Latency & Load Benchmark (`/demos/benchmark`)**: Real-time P50 / P95 / P99 burst HTTP benchmark harness.
 4. **Full-Stack Dynamic Entity CRUD (`/entities/invoices`)** with 1-click **CSV / JSON Export** and **`+ Seed 5 Rows`**.
 5. **Always-On SignalR Live Event Mesh (`/hubs/events`)** with instant header broadcast and notification drawer.
 6. **Dual Execution Runtime**: Run 100% in-process without Docker, or orchestrate across multi-process container meshes with Aspire AppHost.
@@ -48,9 +50,14 @@ Designed to showcase the bleeding edge of cloud-native architecture, NovaMesh pr
 
 ## 📸 Interactive Showcase Photo Gallery
 
-> 👉 **[View the Full 23-Screenshot Interactive Showcase Gallery (`SHOWCASE_GALLERY.md`) →](SHOWCASE_GALLERY.md)**
+> 👉 **[View the Full 26-Screenshot Interactive Showcase Gallery (`SHOWCASE_GALLERY.md`) →](SHOWCASE_GALLERY.md)**
 
-### 🚀 Industry Vertical Command Centers (`/demos/*`)
+### 🚀 Interactive Showcase Hub & Industry Vertical Command Centers (`/demos/*`)
+| 📸 In-App Interactive Showcase Gallery (`/demos/gallery`) | ⚡ Global Command Palette & Quick Jump Dropdown |
+| :---: | :---: |
+| ![Interactive Showcase Gallery](docs/screenshots/24_interactive_showcase_gallery.png) | ![Quick Jump Command Palette](docs/screenshots/25_quick_jump_command_palette.png) |
+| *Filterable 12-module visual showcase with 1-click live module launcher* | *Instant top-bar Command Palette (`Quick Jump`) to hop across any vertical demo or AI workbench* |
+
 | 🛡️ AegisCyber Zero-Trust SOC Radar (`/demos/cyber-soc`) | 📈 QuantFlow FinTech Arbitrage Desk (`/demos/quant-terminal`) |
 | :---: | :---: |
 | ![AegisCyber Zero-Day Attack](docs/screenshots/14_aegiscyber_soc_attack.png) | ![QuantFlow Arbitrage Desk](docs/screenshots/16_quantflow_arbitrage_desk.png) |
@@ -61,10 +68,10 @@ Designed to showcase the bleeding edge of cloud-native architecture, NovaMesh pr
 | ![PulseMed ICU Triage](docs/screenshots/17_pulsemed_icu_triage.png) | ![Live Schema Architecture Explorer](docs/screenshots/18_live_schema_architecture_explorer.png) |
 | *HL7 FHIR R4 multi-bed SVG ECG monitors, AI NEWS2 sepsis scoring & emergency admission* | *Real-time `sqlite_master` & `PRAGMA table_info` introspection across 32 SQLite tables (222 rows)* |
 
-### ☁️ .NET Aspire Cloud Mesh, AI Agent Workbench & Dynamic CRUD
-| 🌐 NovaMesh Cloud Telemetry (`/aspire/telemetry`) | 🔍 W3C OpenTelemetry Trace Waterfall |
+### ☁️ .NET Aspire Cloud Mesh, Live API Benchmark, AI Agent & Dynamic CRUD
+| ⚡ Live API Latency & Throughput Benchmark (`/demos/benchmark`) | 🌐 NovaMesh Cloud Telemetry (`/aspire/telemetry`) |
 | :---: | :---: |
-| ![NovaMesh Telemetry](docs/screenshots/01_novamesh_telemetry_dashboard.png) | ![W3C Trace Waterfall](docs/screenshots/02_novamesh_w3c_traces_waterfall.png) |
+| ![Live API Benchmark](docs/screenshots/26_live_api_latency_benchmark.png) | ![NovaMesh Telemetry](docs/screenshots/01_novamesh_telemetry_dashboard.png) |
 
 | 📊 Dynamic CRUD with CSV/JSON Export & `+ Seed 5 Rows` | 🔔 SignalR Live Broadcast & Notification Mesh (`/hubs/events`) |
 | :---: | :---: |
@@ -74,7 +81,7 @@ Designed to showcase the bleeding edge of cloud-native architecture, NovaMesh pr
 | :---: | :---: |
 | ![AI Agent Workbench](docs/screenshots/09_ai_agent_rag_workbench.png) | ![Ask2App Prompt Builder](docs/screenshots/22_forge_studio_ask2app_prompt.png) |
 
-> 📸 **[Browse all 23 high-resolution verified screenshots in `SHOWCASE_GALLERY.md` →](SHOWCASE_GALLERY.md)**
+> 📸 **[Browse all 26 high-resolution verified screenshots in `SHOWCASE_GALLERY.md` →](SHOWCASE_GALLERY.md)**
 
 ---
 

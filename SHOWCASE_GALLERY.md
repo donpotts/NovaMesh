@@ -3,23 +3,34 @@
 [![Platform Ask2App.com](https://img.shields.io/badge/Platform-Ask2App.com-7928CA?style=for-the-badge&logo=rocket&logoColor=white)](https://ask2app.com)
 [![Back to README](https://img.shields.io/badge/⬅️%20Back%20to-Main%20README-06B6D4?style=for-the-badge)](README.md)
 
-> **23 End-to-End Verified High-Resolution Screenshots** captured via headless Chromium Playwright across **NovaMesh** (`.NET 10`, `.NET Aspire 13.6.1`, `MudBlazor 8 WASM`, `OpenTelemetry`, `SignalR`, `SQLite`) and the **Ask2App Visual Studio**.
+> **26 End-to-End Verified High-Resolution Screenshots** captured via headless Chromium Playwright across **NovaMesh** (`.NET 10`, `.NET Aspire 13.6.1`, `MudBlazor 8 WASM`, `OpenTelemetry`, `SignalR`, `SQLite`) and the **Ask2App Visual Studio**.
 
 ---
 
 ## 📑 Table of Contents
-1. [🚀 Interactive Industry Vertical Demos](#-1-interactive-industry-vertical-demos)
+1. [🚀 Interactive Industry Vertical Demos & Showcase Hub](#-1-interactive-industry-vertical-demos--showcase-hub)
+   - [📸 In-App Interactive Showcase Gallery & Quick Jump Command Palette (`/demos/gallery`)](#-in-app-interactive-showcase-gallery--quick-jump-command-palette-demosgallery)
    - [🛡️ AegisCyber: AI Zero-Trust SOC & Threat Radar (`/demos/cyber-soc`)](#-aegiscyber-ai-zero-trust-soc--threat-radar-demoscyber-soc)
    - [📈 QuantFlow: Institutional FinTech & Flash-Arbitrage Desk (`/demos/quant-terminal`)](#-quantflow-institutional-fintech--flash-arbitrage-desk-demosquant-terminal)
    - [🩺 PulseMed: Smart ICU Telemetry & AI Sepsis Triage (`/demos/med-triage`)](#-pulsemed-smart-icu-telemetry--ai-sepsis-triage-demosmed-triage)
    - [🗺️ Live System Architecture & 32-Table SQLite Schema Explorer (`/demos/architecture`)](#️-live-system-architecture--32-table-sqlite-schema-explorer-demosarchitecture)
+   - [⚡ Live API Latency & Throughput Benchmark Runner (`/demos/benchmark`)](#-live-api-latency--throughput-benchmark-runner-demosbenchmark)
 2. [⚡ Dynamic Entity CRUD, SignalR Real-Time Mesh & Prompt Engine](#-2-dynamic-entity-crud-signalr-real-time-mesh--prompt-engine)
 3. [☁️ .NET Aspire Distributed Cloud Mesh & OpenTelemetry](#-3-net-aspire-distributed-cloud-mesh--opentelemetry)
 4. [🤖 AI Agent RAG Workbench, Multi-Tenancy & Enterprise Suite](#-4-ai-agent-rag-workbench-multi-tenancy--enterprise-suite)
 
 ---
 
-## 🚀 1. Interactive Industry Vertical Demos
+## 🚀 1. Interactive Industry Vertical Demos & Showcase Hub
+
+### 📸 In-App Interactive Showcase Gallery & Quick Jump Command Palette (`/demos/gallery`)
+Filterable 12-module visual showcase with 1-click **"🚀 Launch Live Experience"** cards and the global **⚡ Command Palette & Quick Jump** AppBar dropdown.
+
+| 📸 Interactive Platform Showcase & Feature Tour (`/demos/gallery`) | ⚡ Global Command Palette & Quick Jump Dropdown |
+| :---: | :---: |
+| ![Interactive Showcase Gallery](docs/screenshots/24_interactive_showcase_gallery.png) | ![Quick Jump Command Palette](docs/screenshots/25_quick_jump_command_palette.png) |
+
+---
 
 ### 🛡️ AegisCyber: AI Zero-Trust SOC & Threat Radar (`/demos/cyber-soc`)
 Real-time eBPF kernel packet inspection stream, interactive **💥 Simulate Zero-Day Attack** stress test, **🔒 Auto-Quarantine & Harden Mesh** remediation, and SPIFFE/SPIRE mTLS node posture matrix.
@@ -48,6 +59,13 @@ HL7 FHIR R4 multi-bed patient telemetry cards (`Heart Rate BPM`, `SpO2 %`, `MAP 
 Live database introspection powered by `GET /api/system/architecture` (`sqlite_master` + `PRAGMA table_info`), visualizing the 4-tier runtime topology and all **32 live SQLite tables (`222 Persisted Rows`)** with primary keys, column types, and row counts.
 
 ![Live System Architecture & SQLite Schema Explorer](docs/screenshots/18_live_schema_architecture_explorer.png)
+
+---
+
+### ⚡ Live API Latency & Throughput Benchmark Runner (`/demos/benchmark`)
+Interactive HTTP burst load harness executing concurrent requests against live Minimal API & SQLite endpoints (`/alive`, `/api/system/architecture`, `/api/tenants`, `/api/blog/posts`) with real P50 / P95 / P99 telemetry.
+
+![Live API Latency & Throughput Benchmark](docs/screenshots/26_live_api_latency_benchmark.png)
 
 ---
 

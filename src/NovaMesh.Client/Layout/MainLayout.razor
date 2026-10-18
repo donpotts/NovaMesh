@@ -108,6 +108,32 @@
         <MudButton Variant="Variant.Text" Color="Color.Inherit" StartIcon="@Icons.Material.Filled.Speed" OnClick='() => Nav.NavigateTo("/aspire/telemetry")' Class="d-none d-md-inline-flex mr-1">Telemetry</MudButton>
         <MudButton Variant="Variant.Text" Color="Color.Inherit" StartIcon="@Icons.Material.Filled.RssFeed" OnClick='() => Nav.NavigateTo("/blog")' Class="d-none d-md-inline-flex mr-1">Blog</MudButton>
 
+        <!-- Global Quick Jump Command Palette -->
+        <MudMenu id="quick-jump-menu" Dense="true" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" Class="mr-1">
+            <ActivatorContent>
+                <MudButton id="quick-jump-btn" Variant="Variant.Outlined" Color="Color.Inherit" Size="Size.Small"
+                           StartIcon="@Icons.Material.Filled.Bolt"
+                           Class="px-2 d-none d-md-inline-flex"
+                           Style="border-color: rgba(255,255,255,0.45); background: rgba(0,0,0,0.18); text-transform: none;">
+                    <span>Quick Jump</span>
+                </MudButton>
+            </ActivatorContent>
+            <ChildContent>
+                <div class="pa-2" style="min-width: 280px;">
+                    <MudText Typo="Typo.caption" Class="px-2 font-weight-bold text-secondary">⚡ COMMAND PALETTE & QUICK JUMP</MudText>
+                    <MudMenuItem Icon="@Icons.Material.Filled.Collections" OnClick='() => Nav.NavigateTo("/demos/gallery")'>📸 Interactive Showcase Gallery</MudMenuItem>
+                    <MudMenuItem Icon="@Icons.Material.Filled.Shield" OnClick='() => Nav.NavigateTo("/demos/cyber-soc")'>🛡️ AegisCyber SOC Radar</MudMenuItem>
+                    <MudMenuItem Icon="@Icons.Material.Filled.ShowChart" OnClick='() => Nav.NavigateTo("/demos/quant-terminal")'>📈 QuantFlow FinTech Desk</MudMenuItem>
+                    <MudMenuItem Icon="@Icons.Material.Filled.MonitorHeart" OnClick='() => Nav.NavigateTo("/demos/med-triage")'>🩺 PulseMed Smart ICU Triage</MudMenuItem>
+                    <MudMenuItem Icon="@Icons.Material.Filled.AccountTree" OnClick='() => Nav.NavigateTo("/demos/architecture")'>🗺️ Live 32-Table Schema Explorer</MudMenuItem>
+                    <MudMenuItem Icon="@Icons.Material.Filled.Speed" OnClick='() => Nav.NavigateTo("/demos/benchmark")'>⚡ Live API Latency Benchmark</MudMenuItem>
+                    <MudDivider Class="my-1" />
+                    <MudMenuItem Icon="@Icons.Material.Filled.SmartToy" OnClick='() => Nav.NavigateTo("/ai/agent")'>🤖 AI Agent & RAG Workbench</MudMenuItem>
+                    <MudMenuItem Icon="@Icons.Material.Filled.RssFeed" OnClick='() => Nav.NavigateTo("/blog")'>📰 Editorial Blog & CMS Hub</MudMenuItem>
+                </div>
+            </ChildContent>
+        </MudMenu>
+
         <!-- Real-Time SignalR Notification Bell with Dynamic Badge & Live Broadcast -->
         <MudMenu id="signalr-bell-menu" Dense="true" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
             <ActivatorContent>
@@ -259,10 +285,12 @@
                 <MudNavLink Href="/blog" Icon="@Icons.Material.Filled.RssFeed">Public Blog Hub</MudNavLink>
                 <MudNavLink Href="/entities/invoices" Icon="@Icons.Material.Filled.Dataset">Invoices</MudNavLink>
                 <MudNavGroup Title="Interactive Demos" Icon="@Icons.Material.Filled.RocketLaunch" Expanded="true">
+                    <MudNavLink Href="/demos/gallery" Icon="@Icons.Material.Filled.Collections">Interactive Showcase</MudNavLink>
                     <MudNavLink Href="/demos/cyber-soc" Icon="@Icons.Material.Filled.Shield">AegisCyber SOC Radar</MudNavLink>
                     <MudNavLink Href="/demos/quant-terminal" Icon="@Icons.Material.Filled.ShowChart">QuantFlow FinTech Desk</MudNavLink>
                     <MudNavLink Href="/demos/med-triage" Icon="@Icons.Material.Filled.MonitorHeart">PulseMed ICU Triage</MudNavLink>
                     <MudNavLink Href="/demos/architecture" Icon="@Icons.Material.Filled.AccountTree">Live Schema & Architecture</MudNavLink>
+                    <MudNavLink Href="/demos/benchmark" Icon="@Icons.Material.Filled.Speed">Live API Benchmark</MudNavLink>
                 </MudNavGroup>
                 <MudNavLink Href="http://localhost:5000/scalar/v1" Target="_blank" Icon="@Icons.Material.Filled.Api">Scalar API Docs <MudIcon Icon="@Icons.Material.Filled.OpenInNew" Size="Size.Small" Class="ml-1" /></MudNavLink>
 
@@ -295,10 +323,12 @@
                 </MudNavGroup>
 
                 <MudNavGroup Title="Interactive Demos" Icon="@Icons.Material.Filled.RocketLaunch" Expanded="true">
+                    <MudNavLink Href="/demos/gallery" Icon="@Icons.Material.Filled.Collections">Interactive Showcase</MudNavLink>
                     <MudNavLink Href="/demos/cyber-soc" Icon="@Icons.Material.Filled.Shield">AegisCyber SOC Radar</MudNavLink>
                     <MudNavLink Href="/demos/quant-terminal" Icon="@Icons.Material.Filled.ShowChart">QuantFlow FinTech Desk</MudNavLink>
                     <MudNavLink Href="/demos/med-triage" Icon="@Icons.Material.Filled.MonitorHeart">PulseMed ICU Triage</MudNavLink>
                     <MudNavLink Href="/demos/architecture" Icon="@Icons.Material.Filled.AccountTree">Live Schema & Architecture</MudNavLink>
+                    <MudNavLink Href="/demos/benchmark" Icon="@Icons.Material.Filled.Speed">Live API Benchmark</MudNavLink>
                 </MudNavGroup>
 
             <MudNavGroup Title="Aspire & Cloud Ops" Icon="@Icons.Material.Filled.Cloud" Expanded="true">
