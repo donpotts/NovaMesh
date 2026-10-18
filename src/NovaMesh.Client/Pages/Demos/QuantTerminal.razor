@@ -1,0 +1,136 @@
+@page "/demos/quant-terminal"
+@inject ISnackbar Snackbar
+
+<PageTitle>QuantFlow — Algorithmic FinTech & Flash-Arbitrage Terminal</PageTitle>
+
+<div class="d-flex justify-space-between align-center mb-4 flex-wrap gap-3 pa-4 rounded-xl"
+     style="background: linear-gradient(135deg, rgba(16,185,129,0.18) 0%, rgba(15,23,42,0.95) 60%, rgba(79,70,229,0.18) 100%); border: 1px solid rgba(16,185,129,0.35);">
+    <div>
+        <div class="d-flex align-center gap-2 mb-1">
+            <MudChip T="string" Color="Color.Success" Size="Size.Small" Variant="Variant.Filled" Class="font-weight-bold">
+                ● ULTRA-LOW LATENCY ENGINE (0.42ms)
+            </MudChip>
+            <MudChip T="string" Color="Color.Primary" Size="Size.Small" Variant="Variant.Outlined">Cross-DEX + Institutional CLOB</MudChip>
+        </div>
+        <MudText Typo="Typo.h5" Class="font-weight-bold">📈 QuantFlow Institutional Liquidity & Arbitrage Desk</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary">Statistical triangular arbitrage, real-time Sharpe telemetry, and atomic flash-swap execution</MudText>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        <MudButton id="btn-exec-arb" Variant="Variant.Filled" Color="Color.Success" StartIcon="@Icons.Material.Filled.Bolt" OnClick="ExecuteFlashArbitrage">
+            ⚡ Execute Atomic Flash Arbitrage
+        </MudButton>
+        <MudButton Variant="Variant.Outlined" Color="Color.Info" StartIcon="@Icons.Material.Filled.Autorenew" OnClick="RebalancePools">
+            🔄 Rebalance Liquidity Pools
+        </MudButton>
+    </div>
+</div>
+
+<MudGrid Class="mb-4">
+    <MudItem xs="12" sm="6" md="3">
+        <MudCard Elevation="2" Class="pa-4 rounded-xl" Style="border-top: 3px solid #10B981;">
+            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="font-weight-bold">STRATEGY NET ALPHA (24H)</MudText>
+            <MudText Typo="Typo.h4" Class="font-weight-bold my-1" Color="Color.Success">+@_totalPnl.ToString("C2")</MudText>
+            <MudText Typo="Typo.caption" Color="Color.Success">▲ Sharpe Ratio: 3.68 • Win Rate: 94.2%</MudText>
+        </MudCard>
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <MudCard Elevation="2" Class="pa-4 rounded-xl" Style="border-top: 3px solid #F59E0B;">
+            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="font-weight-bold">BTC / USD PERPETUAL</MudText>
+            <MudText Typo="Typo.h4" Class="font-weight-bold my-1">$@_btcPrice.ToString("N2")</MudText>
+            <MudText Typo="Typo.caption" Color="Color.Success">+4.38% • Spread: 0.01 bps</MudText>
+        </MudCard>
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <MudCard Elevation="2" Class="pa-4 rounded-xl" Style="border-top: 3px solid #6366F1;">
+            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="font-weight-bold">ETH / USD PERPETUAL</MudText>
+            <MudText Typo="Typo.h4" Class="font-weight-bold my-1">$@_ethPrice.ToString("N2")</MudText>
+            <MudText Typo="Typo.caption" Color="Color.Success">+3.12% • Funding: +0.008%</MudText>
+        </MudCard>
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <MudCard Elevation="2" Class="pa-4 rounded-xl" Style="border-top: 3px solid #06B6D4;">
+            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="font-weight-bold">TOTAL POOL TVL</MudText>
+            <MudText Typo="Typo.h4" Class="font-weight-bold my-1">$128.4M</MudText>
+            <MudText Typo="Typo.caption" Color="Color.Secondary">Across 6 L2 & Institutional Venues</MudText>
+        </MudCard>
+    </MudItem>
+</MudGrid>
+
+<MudCard Elevation="2" Class="pa-4 mb-4 rounded-xl">
+    <MudText Typo="Typo.subtitle1" Class="font-weight-bold mb-3">🎛️ Flash-Arbitrage Execution Parameters</MudText>
+    <MudGrid>
+        <MudItem xs="12" md="4">
+            <MudNumericField T="decimal" @bind-Value="_notionalAmount" Label="Flash Loan Notional Capital ($ USD)" Variant="Variant.Outlined" Margin="Margin.Dense" Step="25000M" />
+        </MudItem>
+        <MudItem xs="12" md="4">
+            <MudSelect T="string" @bind-Value="_selectedRoute" Label="Arbitrage Triangular Route" Variant="Variant.Outlined" Margin="Margin.Dense">
+                <MudSelectItem Value="@("BTC-USDT -> ETH-BTC -> ETH-USDT (Binance/Coinbase)")">BTC-USDT -> ETH-BTC -> ETH-USDT (Binance/Coinbase)</MudSelectItem>
+                <MudSelectItem Value="@("SOL-USDC -> RAY-SOL -> RAY-USDC (Solana Jupiter)")">SOL-USDC -> RAY-SOL -> RAY-USDC (Solana Jupiter)</MudSelectItem>
+                <MudSelectItem Value="@("ETH-USDC -> WBTC-ETH -> WBTC-USDC (Uniswap v4 / Curve)")">ETH-USDC -> WBTC-ETH -> WBTC-USDC (Uniswap v4 / Curve)</MudSelectItem>
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" md="4">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true" StartIcon="@Icons.Material.Filled.PlayArrow" OnClick="ExecuteFlashArbitrage">
+                🚀 Fire Atomic Arbitrage Bundle
+            </MudButton>
+        </MudItem>
+    </MudGrid>
+</MudCard>
+
+<MudCard Elevation="2" Class="pa-4 rounded-xl">
+    <MudText Typo="Typo.h6" Class="font-weight-bold mb-3">⚡ Real-Time Algorithmic Execution Blotter</MudText>
+    <MudTable Items="@_trades" Hover="true" Dense="true" Elevation="0">
+        <HeaderContent>
+            <MudTh>Tx Hash / ID</MudTh>
+            <MudTh>Arbitrage Route</MudTh>
+            <MudTh>Notional Size</MudTh>
+            <MudTh>Spread Captured</MudTh>
+            <MudTh>Execution Latency</MudTh>
+            <MudTh>Net Realized PnL</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd><code>@context.TxId</code></MudTd>
+            <MudTd><MudText Typo="Typo.body2" Class="font-weight-bold">@context.Route</MudText></MudTd>
+            <MudTd>@context.Notional.ToString("C0")</MudTd>
+            <MudTd><MudChip T="string" Size="Size.Small" Color="Color.Info">@context.SpreadBps bps</MudChip></MudTd>
+            <MudTd><code>@context.LatencyMs ms</code></MudTd>
+            <MudTd><MudText Typo="Typo.body2" Color="Color.Success" Class="font-weight-bold">+@context.Profit.ToString("C2")</MudText></MudTd>
+        </RowTemplate>
+    </MudTable>
+</MudCard>
+
+@code {
+    private decimal _totalPnl = 48920.50m;
+    private decimal _btcPrice = 94820.50m;
+    private decimal _ethPrice = 3412.80m;
+    private decimal _notionalAmount = 250000m;
+    private string _selectedRoute = "BTC-USDT -> ETH-BTC -> ETH-USDT (Binance/Coinbase)";
+    private int _txSeq = 7810;
+
+    private List<ArbTrade> _trades = new()
+    {
+        new("0x8f92...e41a", "BTC-USDT -> ETH-BTC -> ETH-USDT (Binance/Coinbase)", 250000m, 14.2m, 0.41m, 1842.50m),
+        new("0x3c19...b08d", "SOL-USDC -> RAY-SOL -> RAY-USDC (Solana Jupiter)", 180000m, 18.5m, 0.38m, 1490.00m),
+        new("0x7a44...c92f", "ETH-USDC -> WBTC-ETH -> WBTC-USDC (Uniswap v4 / Curve)", 320000m, 11.8m, 0.49m, 2115.80m),
+        new("0x1d88...f104", "BTC-USDT -> SOL-BTC -> SOL-USDT (Cross-Venue CLOB)", 150000m, 9.6m, 0.44m, 940.20m)
+    };
+
+    private void ExecuteFlashArbitrage()
+    {
+        _txSeq++;
+        var profit = Math.Round(_notionalAmount * 0.0082m, 2);
+        _totalPnl += profit;
+        _btcPrice += 42.50m;
+        _ethPrice += 6.20m;
+        _trades.Insert(0, new ArbTrade($"0x{_txSeq:x4}...a9f2", _selectedRoute, _notionalAmount, 16.4m, 0.39m, profit));
+        Snackbar.Add($"⚡ Atomic Flash Arbitrage filled in 0.39ms! Net Profit: +{profit:C2}", Severity.Success);
+    }
+
+    private void RebalancePools()
+    {
+        _btcPrice += 18.00m;
+        Snackbar.Add("🔄 Concentrated liquidity ticks rebalanced across 6 institutional pools.", Severity.Info);
+    }
+
+    public record ArbTrade(string TxId, string Route, decimal Notional, decimal SpreadBps, decimal LatencyMs, decimal Profit);
+}

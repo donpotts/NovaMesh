@@ -1,0 +1,157 @@
+@page "/entities/invoices"
+@inject HttpClient Http
+@inject ISnackbar Snackbar
+
+<PageTitle>Invoices Management</PageTitle>
+
+<div class="d-flex justify-space-between align-center mb-4 flex-wrap gap-2">
+    <div>
+        <div class="d-flex align-center gap-2">
+            <MudText Typo="Typo.h5" Class="font-weight-bold">
+                <MudIcon Icon="@Icons.Material.Filled.Dataset" Class="mr-2" Color="Color.Primary" />
+                Invoices Management
+            </MudText>
+            <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Outlined">@items.Count Records</MudChip>
+        </div>
+        <MudText Typo="Typo.body2" Color="Color.Secondary">Full-stack dynamically injected CRUD module for Invoice records with CSV/JSON export & bulk seed</MudText>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        <MudButton id="btn-export-csv" Variant="Variant.Outlined" Color="Color.Info" StartIcon="@Icons.Material.Filled.TableView" Href="/api/entities/invoices/export?format=csv" Target="_blank">Export CSV</MudButton>
+        <MudButton id="btn-export-json" Variant="Variant.Outlined" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.DataObject" Href="/api/entities/invoices/export?format=json" Target="_blank">Export JSON</MudButton>
+        <MudButton id="btn-seed-batch" Variant="Variant.Outlined" Color="Color.Success" StartIcon="@Icons.Material.Filled.AutoAwesome" OnClick="SeedBatchAsync">+ Seed 5 Rows</MudButton>
+        <MudButton Variant="Variant.Outlined" Color="Color.Default" StartIcon="@Icons.Material.Filled.Refresh" OnClick="LoadItems">Refresh</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="OpenNewForm">New Invoice</MudButton>
+    </div>
+</div>
+
+@if (showForm)
+{
+    <MudCard Elevation="3" Class="pa-4 mb-4 rounded-xl" Style="border-left: 4px solid var(--mud-palette-primary);">
+        <MudText Typo="Typo.subtitle1" Class="font-weight-bold mb-3">@(editItem.Id == 0 ? "Create New Invoice" : $"Edit Invoice #{editItem.Id}")</MudText>
+        <MudGrid>
+            <MudItem xs="12" sm="6" md="3"><MudTextField T="string" @bind-Value="editItem.InvoiceNumber" Label="InvoiceNumber" Variant="Variant.Outlined" Margin="Margin.Dense" /></MudItem>
+            <MudItem xs="12" sm="6" md="3"><MudTextField T="string" @bind-Value="editItem.CustomerName" Label="CustomerName" Variant="Variant.Outlined" Margin="Margin.Dense" /></MudItem>
+            <MudItem xs="12" sm="6" md="3"><MudNumericField T="decimal" @bind-Value="editItem.Amount" Label="Amount" Variant="Variant.Outlined" Margin="Margin.Dense" /></MudItem>
+            <MudItem xs="12" sm="6" md="3"><MudSwitch T="bool" @bind-Value="editItem.IsPaid" Color="Color.Primary" Label="IsPaid" /></MudItem>
+            <MudItem xs="12" sm="6" md="3"><MudTextField T="string" @bind-Value="editItem.IssuedAt" Label="IssuedAt" Variant="Variant.Outlined" Margin="Margin.Dense" /></MudItem>
+        </MudGrid>
+        <div class="d-flex justify-end gap-2 mt-4">
+            <MudButton Variant="Variant.Text" OnClick="() => showForm = false">Cancel</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Save" OnClick="SaveItemAsync">Save Invoice</MudButton>
+        </div>
+    </MudCard>
+}
+
+<MudCard Elevation="2" Class="pa-4 mb-4">
+    <MudTextField @bind-Value="search" Placeholder="Search Invoices..." Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Immediate="true" OnKeyUp="LoadItems" />
+</MudCard>
+
+<MudTable Items="@items" Loading="@loading" Elevation="2" Hover="true">
+    <HeaderContent>
+        <MudTh>ID</MudTh>
+        <MudTh>InvoiceNumber</MudTh>
+        <MudTh>CustomerName</MudTh>
+        <MudTh>Amount</MudTh>
+        <MudTh>IsPaid</MudTh>
+        <MudTh>IssuedAt</MudTh>
+        <MudTh>Created</MudTh>
+        <MudTh>Actions</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd><code class="font-weight-bold">#@context.Id</code></MudTd>
+        <MudTd><MudText Typo="Typo.body2" Class="font-weight-bold">@context.InvoiceNumber</MudText></MudTd>
+        <MudTd><MudText Typo="Typo.body2" Class="font-weight-bold">@context.CustomerName</MudText></MudTd>
+        <MudTd><MudText Typo="Typo.subtitle2" Color="Color.Success">@context.Amount.ToString("C")</MudText></MudTd>
+        <MudTd><MudChip T="string" Color="@(context.IsPaid ? Color.Success : Color.Default)" Size="Size.Small">@(context.IsPaid ? "Yes" : "No")</MudChip></MudTd>
+        <MudTd><MudText Typo="Typo.body2" Class="font-weight-bold">@context.IssuedAt</MudText></MudTd>
+        <MudTd><MudText Typo="Typo.caption">@context.CreatedAt.ToString("MMM dd, yyyy")</MudText></MudTd>
+        <MudTd>
+            <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Size="Size.Small" OnClick="() => BeginEdit(context)" />
+            <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" OnClick="() => DeleteItemAsync(context.Id)" />
+        </MudTd>
+    </RowTemplate>
+</MudTable>
+
+@code {
+    private List<InvoiceModel> items = new();
+    private InvoiceModel editItem = new();
+    private bool loading;
+    private bool showForm;
+    private string search = "";
+
+    protected override async Task OnInitializedAsync() => await LoadItems();
+
+    private async Task LoadItems()
+    {
+        loading = true;
+        try
+        {
+            items = await Http.GetFromJsonAsync<List<InvoiceModel>>($"/api/entities/invoices?search={Uri.EscapeDataString(search)}") ?? new();
+        }
+        catch { }
+        finally { loading = false; }
+    }
+
+    private async Task SeedBatchAsync()
+    {
+        var res = await Http.PostAsync("/api/entities/invoices/seed-batch", null);
+        if (res.IsSuccessStatusCode)
+        {
+            Snackbar.Add("⚡ Bulk-seeded 5 sample Invoice rows into SQLite!", Severity.Success);
+            await LoadItems();
+        }
+    }
+
+    private void OpenNewForm()
+    {
+        editItem = new InvoiceModel();
+        showForm = true;
+    }
+
+    private void BeginEdit(InvoiceModel row)
+    {
+        editItem = row;
+        showForm = true;
+    }
+
+    private async Task SaveItemAsync()
+    {
+        HttpResponseMessage res;
+        if (editItem.Id == 0)
+            res = await Http.PostAsJsonAsync("/api/entities/invoices", editItem);
+        else
+            res = await Http.PutAsJsonAsync($"/api/entities/invoices/{editItem.Id}", editItem);
+
+        if (res.IsSuccessStatusCode)
+        {
+            Snackbar.Add("Invoice saved successfully!", Severity.Success);
+            showForm = false;
+            await LoadItems();
+        }
+        else
+        {
+            Snackbar.Add("Failed to save Invoice.", Severity.Error);
+        }
+    }
+
+    private async Task DeleteItemAsync(int id)
+    {
+        var res = await Http.DeleteAsync($"/api/entities/invoices/{id}");
+        if (res.IsSuccessStatusCode)
+        {
+            Snackbar.Add("Invoice deleted.", Severity.Success);
+            await LoadItems();
+        }
+    }
+
+    public class InvoiceModel
+    {
+        public int Id { get; set; }
+        public string InvoiceNumber { get; set; } = "";
+        public string CustomerName { get; set; } = "";
+        public decimal Amount { get; set; } = 0m;
+        public bool IsPaid { get; set; } = true;
+        public string IssuedAt { get; set; } = "";
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    }
+}

@@ -3,6 +3,7 @@ using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Scalar.AspNetCore;
@@ -29,6 +30,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 });
 
 // Services
+builder.Services.AddSignalR();
 builder.Services.AddSingleton<JwtTokenService>();
 builder.Services.AddHttpClient<AiRagService>();
 builder.Services.AddCors(opts =>
@@ -1191,6 +1193,183 @@ app.MapDelete("/api/oauth-clients/{id:guid}", async (Guid id, AppDbContext db) =
 }).WithName("DeleteOAuthClient").RequireAuthorization();
 
 // -------------------------------------------------------------
+// CMS Kit Blog Hub Module Endpoints (Blogs, Posts, Reactions, Comments)
+// -------------------------------------------------------------
+app.MapGet("/api/cms/blogs", async (AppDbContext db) =>
+{
+    var blogs = await db.Blogs.OrderBy(b => b.Name).ToListAsync();
+    return Results.Ok(blogs.Select(b => new BlogDto(b.Id, b.Name, b.Slug, b.Description, b.CreatedAt)));
+}).WithName("GetBlogs").WithSummary("List all publication blogs");
+
+app.MapGet("/api/cms/blog-posts", async (string? search, string? category, string? tag, int pageNumber = 1, int pageSize = 12, AppDbContext db = null!) =>
+{
+    var query = db.BlogPosts.Where(p => p.IsPublished).AsQueryable();
+    if (!string.IsNullOrWhiteSpace(search))
+        query = query.Where(p => p.Title.Contains(search) || p.ShortDescription.Contains(search) || p.Content.Contains(search));
+    if (!string.IsNullOrWhiteSpace(category) && category != "All")
+        query = query.Where(p => p.Category == category);
+    if (!string.IsNullOrWhiteSpace(tag))
+        query = query.Where(p => p.Tags.Contains(tag));
+
+    var total = await query.CountAsync();
+    var items = await query.OrderByDescending(p => p.PublishedAt ?? p.CreatedAt)
+                           .Skip((pageNumber - 1) * pageSize)
+                           .Take(pageSize)
+                           .ToListAsync();
+
+    var dtos = items.Select(p => new BlogPostDto(p.Id, p.BlogId, p.Title, p.Slug, p.ShortDescription, p.Content, p.CoverImageUrl, p.AuthorName, p.AuthorAvatarUrl, p.Category, p.Tags, p.ReadMinutes, p.ViewCount, p.LikeCount, p.IsPublished, p.CreatedAt, p.PublishedAt)).ToList();
+    return Results.Ok(new PagedResultDto<BlogPostDto>(dtos, total, pageNumber, pageSize));
+}).WithName("GetBlogPosts").WithSummary("List published blog posts with search and category filters");
+
+app.MapGet("/api/cms/blog-posts/{slug}", async (string slug, AppDbContext db) =>
+{
+    var post = await db.BlogPosts.FirstOrDefaultAsync(p => p.Slug == slug);
+    if (post == null && Guid.TryParse(slug, out var gid))
+        post = await db.BlogPosts.FindAsync(gid);
+    if (post == null) return Results.NotFound();
+    post.ViewCount++;
+    await db.SaveChangesAsync();
+    return Results.Ok(new BlogPostDto(post.Id, post.BlogId, post.Title, post.Slug, post.ShortDescription, post.Content, post.CoverImageUrl, post.AuthorName, post.AuthorAvatarUrl, post.Category, post.Tags, post.ReadMinutes, post.ViewCount, post.LikeCount, post.IsPublished, post.CreatedAt, post.PublishedAt));
+}).WithName("GetBlogPostBySlug").WithSummary("Retrieve article details by slug or Guid");
+
+app.MapPost("/api/cms/blog-posts/{id:guid}/react", async (Guid id, ReactRequest req, ClaimsPrincipal user, AppDbContext db) =>
+{
+    var post = await db.BlogPosts.FindAsync(id);
+    if (post == null) return Results.NotFound();
+    var userName = user.Identity?.Name ?? "anonymous";
+    var reaction = new BlogPostReaction { BlogPostId = id, ReactionName = req.ReactionName, UserName = userName };
+    db.Reactions.Add(reaction);
+    post.LikeCount++;
+    await db.SaveChangesAsync();
+    return Results.Ok(new { likeCount = post.LikeCount, reaction = req.ReactionName });
+}).WithName("ReactToBlogPost").WithSummary("Add emoji reaction to blog post");
+
+app.MapGet("/api/cms/blog-posts/{id:guid}/comments", async (Guid id, AppDbContext db) =>
+{
+    var comments = await db.Comments.OrderByDescending(c => c.CreatedAt).ToListAsync();
+    return Results.Ok(comments);
+}).WithName("GetBlogPostComments").WithSummary("List all comments for a blog post");
+
+app.MapPost("/api/cms/blog-posts/{id:guid}/comments", async (Guid id, PostCommentRequest req, AppDbContext db) =>
+{
+    var comment = new CmsComment
+    {
+        ArticleId = 1,
+        AuthorName = req.AuthorName,
+        AuthorEmail = req.AuthorEmail,
+        CommentText = req.CommentText,
+        Status = "Approved"
+    };
+    db.Comments.Add(comment);
+    await db.SaveChangesAsync();
+    return Results.Created($"/api/cms/comments/{comment.Id}", comment);
+}).WithName("PostBlogPostComment").WithSummary("Post a discussion comment to a blog post");
+
+// -------------------------------------------------------------
+// Real-Time SignalR Event Hub & Live Notification Broadcast
+// -------------------------------------------------------------
+app.MapHub<PlatformEventHub>("/hubs/events");
+
+app.MapPost("/api/events/broadcast", async (CreateNotificationRequest req, IHubContext<PlatformEventHub> hub, AppDbContext db) =>
+{
+    var notif = new AppNotification
+    {
+        Title = string.IsNullOrWhiteSpace(req.Title) ? "Live System Broadcast" : req.Title,
+        Message = string.IsNullOrWhiteSpace(req.Message) ? "Real-time event dispatched across connected SignalR nodes." : req.Message,
+        Severity = string.IsNullOrWhiteSpace(req.Severity) ? "Info" : req.Severity,
+        TargetAudience = req.TargetAudience ?? "All Users",
+        ActionUrl = req.ActionUrl ?? "/",
+        CreatedBy = "SignalR EventHub",
+        CreatedAt = DateTime.UtcNow
+    };
+    db.Notifications.Add(notif);
+    await db.SaveChangesAsync();
+
+    await hub.Clients.All.SendAsync("ReceiveEvent", new
+    {
+        id = notif.Id,
+        title = notif.Title,
+        message = notif.Message,
+        severity = notif.Severity,
+        timestamp = notif.CreatedAt
+    });
+
+    return Results.Ok(notif);
+}).WithName("BroadcastRealtimeEvent").WithSummary("Broadcast a real-time notification event over SignalR /hubs/events and persist to Notifications");
+
+app.MapGet("/api/system/architecture", async (AppDbContext db) =>
+{
+    var tables = new List<object>();
+    var totalRows = 0L;
+    try
+    {
+        var conn = db.Database.GetDbConnection();
+        if (conn.State != System.Data.ConnectionState.Open)
+            await conn.OpenAsync();
+
+        var tableNames = new List<string>();
+        await using (var cmd = conn.CreateCommand())
+        {
+            cmd.CommandText = "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '__EFMigrations%' ORDER BY name;";
+            await using var reader = await cmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+                tableNames.Add(reader.GetString(0));
+        }
+
+        foreach (var tName in tableNames)
+        {
+            long rowCount = 0;
+            await using (var countCmd = conn.CreateCommand())
+            {
+                countCmd.CommandText = $"SELECT COUNT(*) FROM \"{tName}\";";
+                var scalar = await countCmd.ExecuteScalarAsync();
+                rowCount = Convert.ToInt64(scalar ?? 0);
+            }
+            totalRows += rowCount;
+
+            var columns = new List<object>();
+            await using (var colCmd = conn.CreateCommand())
+            {
+                colCmd.CommandText = $"PRAGMA table_info(\"{tName}\");";
+                await using var colReader = await colCmd.ExecuteReaderAsync();
+                while (await colReader.ReadAsync())
+                {
+                    columns.Add(new
+                    {
+                        name = colReader.GetString(1),
+                        type = colReader.GetString(2),
+                        notNull = colReader.GetInt32(3) == 1,
+                        isPrimaryKey = colReader.GetInt32(5) == 1
+                    });
+                }
+            }
+
+            tables.Add(new
+            {
+                tableName = tName,
+                rowCount = rowCount,
+                columnCount = columns.Count,
+                columns = columns
+            });
+        }
+    }
+    catch { }
+
+    return Results.Ok(new
+    {
+        solutionName = "NovaMesh",
+        framework = "net10.0",
+        databaseProvider = "SQLite (EF Core)",
+        signalRHub = "/hubs/events",
+        openApiSpec = "/openapi/v1.json",
+        scalarDocs = "/scalar/v1",
+        totalTables = tables.Count,
+        totalRows = totalRows,
+        tables = tables
+    });
+}).WithName("GetSystemArchitecture").WithSummary("Introspect live SQLite database tables, column schemas, row counts, and service topology");
+
+// -------------------------------------------------------------
 // Sample Domain Module Endpoints
 // -------------------------------------------------------------
 // -------------------------------------------------------------
@@ -1322,79 +1501,7 @@ app.MapPost("/api/aspire/simulate-fault", async (FaultSimulationRequest req, App
     return Results.Ok(new { message = $"Simulated fault '{req.FaultType}' handled successfully by Polly resilience pipeline.", latencyMs = sw.ElapsedMilliseconds, traceId });
 }).WithName("SimulateFault").WithSummary("Test Polly resilience, retry pipelines, and OpenTelemetry error logging");
 
-// -------------------------------------------------------------
-// CMS Kit Blog Hub Module Endpoints (Blogs, Posts, Reactions, Comments)
-// -------------------------------------------------------------
-app.MapGet("/api/cms/blogs", async (AppDbContext db) =>
-{
-    var blogs = await db.Blogs.OrderBy(b => b.Name).ToListAsync();
-    return Results.Ok(blogs.Select(b => new BlogDto(b.Id, b.Name, b.Slug, b.Description, b.CreatedAt)));
-}).WithName("GetBlogs").WithSummary("List all publication blogs");
-
-app.MapGet("/api/cms/blog-posts", async (string? search, string? category, string? tag, int pageNumber = 1, int pageSize = 12, AppDbContext db = null!) =>
-{
-    var query = db.BlogPosts.Where(p => p.IsPublished).AsQueryable();
-    if (!string.IsNullOrWhiteSpace(search))
-        query = query.Where(p => p.Title.Contains(search) || p.ShortDescription.Contains(search) || p.Content.Contains(search));
-    if (!string.IsNullOrWhiteSpace(category) && category != "All")
-        query = query.Where(p => p.Category == category);
-    if (!string.IsNullOrWhiteSpace(tag))
-        query = query.Where(p => p.Tags.Contains(tag));
-
-    var total = await query.CountAsync();
-    var items = await query.OrderByDescending(p => p.PublishedAt ?? p.CreatedAt)
-                           .Skip((pageNumber - 1) * pageSize)
-                           .Take(pageSize)
-                           .ToListAsync();
-
-    var dtos = items.Select(p => new BlogPostDto(p.Id, p.BlogId, p.Title, p.Slug, p.ShortDescription, p.Content, p.CoverImageUrl, p.AuthorName, p.AuthorAvatarUrl, p.Category, p.Tags, p.ReadMinutes, p.ViewCount, p.LikeCount, p.IsPublished, p.CreatedAt, p.PublishedAt)).ToList();
-    return Results.Ok(new PagedResultDto<BlogPostDto>(dtos, total, pageNumber, pageSize));
-}).WithName("GetBlogPosts").WithSummary("List published blog posts with search and category filters");
-
-app.MapGet("/api/cms/blog-posts/{slug}", async (string slug, AppDbContext db) =>
-{
-    var post = await db.BlogPosts.FirstOrDefaultAsync(p => p.Slug == slug);
-    if (post == null && Guid.TryParse(slug, out var gid))
-        post = await db.BlogPosts.FindAsync(gid);
-    if (post == null) return Results.NotFound();
-    post.ViewCount++;
-    await db.SaveChangesAsync();
-    return Results.Ok(new BlogPostDto(post.Id, post.BlogId, post.Title, post.Slug, post.ShortDescription, post.Content, post.CoverImageUrl, post.AuthorName, post.AuthorAvatarUrl, post.Category, post.Tags, post.ReadMinutes, post.ViewCount, post.LikeCount, post.IsPublished, post.CreatedAt, post.PublishedAt));
-}).WithName("GetBlogPostBySlug").WithSummary("Retrieve article details by slug or Guid");
-
-app.MapPost("/api/cms/blog-posts/{id:guid}/react", async (Guid id, ReactRequest req, ClaimsPrincipal user, AppDbContext db) =>
-{
-    var post = await db.BlogPosts.FindAsync(id);
-    if (post == null) return Results.NotFound();
-    var userName = user.Identity?.Name ?? "anonymous";
-    var reaction = new BlogPostReaction { BlogPostId = id, ReactionName = req.ReactionName, UserName = userName };
-    db.Reactions.Add(reaction);
-    post.LikeCount++;
-    await db.SaveChangesAsync();
-    return Results.Ok(new { likeCount = post.LikeCount, reaction = req.ReactionName });
-}).WithName("ReactToBlogPost").WithSummary("Add emoji reaction to blog post");
-
-app.MapGet("/api/cms/blog-posts/{id:guid}/comments", async (Guid id, AppDbContext db) =>
-{
-    var comments = await db.Comments.OrderByDescending(c => c.CreatedAt).ToListAsync();
-    return Results.Ok(comments);
-}).WithName("GetBlogPostComments").WithSummary("List all comments for a blog post");
-
-app.MapPost("/api/cms/blog-posts/{id:guid}/comments", async (Guid id, PostCommentRequest req, AppDbContext db) =>
-{
-    var comment = new CmsComment
-    {
-        ArticleId = 1,
-        AuthorName = req.AuthorName,
-        AuthorEmail = req.AuthorEmail,
-        CommentText = req.CommentText,
-        Status = "Approved"
-    };
-    db.Comments.Add(comment);
-    await db.SaveChangesAsync();
-    return Results.Created($"/api/cms/comments/{comment.Id}", comment);
-}).WithName("PostBlogPostComment").WithSummary("Post a discussion comment to a blog post");
-
 app.MapFallbackToFile("index.html");
 
+NovaMesh.Api.Endpoints.InvoiceEndpoints.MapInvoiceEndpoints(app);
 app.Run();

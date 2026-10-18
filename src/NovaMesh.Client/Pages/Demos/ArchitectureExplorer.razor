@@ -1,0 +1,149 @@
+@page "/demos/architecture"
+@page "/admin/architecture"
+@inject HttpClient Http
+@inject ISnackbar Snackbar
+
+<PageTitle>Live System Architecture & Database Schema Explorer</PageTitle>
+
+<div class="d-flex justify-space-between align-center mb-4 flex-wrap gap-3 pa-4 rounded-xl"
+     style="background: linear-gradient(135deg, rgba(99,102,241,0.20) 0%, rgba(15,23,42,0.95) 60%, rgba(6,182,212,0.18) 100%); border: 1px solid rgba(99,102,241,0.35);">
+    <div>
+        <div class="d-flex align-center gap-2 mb-1">
+            <MudChip T="string" Color="Color.Primary" Size="Size.Small" Variant="Variant.Filled" Class="font-weight-bold">
+                🗺️ LIVE SYSTEM INTROSPECTION
+            </MudChip>
+            <MudChip T="string" Color="Color.Success" Size="Size.Small" Variant="Variant.Outlined">SQLite + EF Core 10 + SignalR Mesh</MudChip>
+        </div>
+        <MudText Typo="Typo.h5" Class="font-weight-bold">🗺️ Live System Architecture & Database Schema Explorer</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary">Real-time introspection of all active microservices, SignalR hubs, SQLite tables, column types, and live row counts</MudText>
+    </div>
+    <div class="d-flex gap-2">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Refresh" OnClick="LoadSchemaAsync">
+            🔄 Re-Scan Live Schema
+        </MudButton>
+    </div>
+</div>
+
+<!-- Service Topology Pipeline -->
+<MudCard Elevation="2" Class="pa-4 mb-4 rounded-xl">
+    <MudText Typo="Typo.subtitle1" Class="font-weight-bold mb-3">⚡ Distributed Runtime Topology</MudText>
+    <MudGrid>
+        <MudItem xs="12" sm="6" md="3">
+            <div class="pa-3 rounded-lg" style="background: rgba(79,70,229,0.12); border: 1px solid rgba(79,70,229,0.3);">
+                <MudText Typo="Typo.caption" Color="Color.Primary" Class="font-weight-bold">PRESENTATION TIER</MudText>
+                <MudText Typo="Typo.subtitle1" Class="font-weight-bold">MudBlazor 8 WASM SPA</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Reactive UI • Dynamic Theme • RBAC</MudText>
+            </div>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <div class="pa-3 rounded-lg" style="background: rgba(6,182,212,0.12); border: 1px solid rgba(6,182,212,0.3);">
+                <MudText Typo="Typo.caption" Color="Color.Info" Class="font-weight-bold">API & REAL-TIME MESH</MudText>
+                <MudText Typo="Typo.subtitle1" Class="font-weight-bold">Minimal API + SignalR Hub</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Scalar OpenAPI 3.1 • /hubs/events</MudText>
+            </div>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <div class="pa-3 rounded-lg" style="background: rgba(16,185,129,0.12); border: 1px solid rgba(16,185,129,0.3);">
+                <MudText Typo="Typo.caption" Color="Color.Success" Class="font-weight-bold">DATA & PERSISTENCE</MudText>
+                <MudText Typo="Typo.subtitle1" Class="font-weight-bold">@(_arch?.TotalTables ?? 0) SQLite Tables</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">@(_arch?.TotalRows ?? 0) Total Persisted Rows</MudText>
+            </div>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <div class="pa-3 rounded-lg" style="background: rgba(245,158,11,0.12); border: 1px solid rgba(245,158,11,0.3);">
+                <MudText Typo="Typo.caption" Color="Color.Warning" Class="font-weight-bold">OBSERVABILITY & RESILIENCE</MudText>
+                <MudText Typo="Typo.subtitle1" Class="font-weight-bold">OpenTelemetry + Polly 8</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">W3C Trace Context • Circuit Breaker</MudText>
+            </div>
+        </MudItem>
+    </MudGrid>
+</MudCard>
+
+<!-- Live Database Tables & Schema Cards -->
+<div class="d-flex justify-space-between align-center mb-3">
+    <MudText Typo="Typo.h6" Class="font-weight-bold">🗄️ Live SQLite Tables & Column Definitions (@(_arch?.Tables.Count ?? 0) Tables)</MudText>
+    <MudTextField @bind-Value="_filter" Placeholder="Filter tables or columns..." Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Margin="Margin.Dense" Variant="Variant.Outlined" Style="max-width: 300px;" Immediate="true" />
+</div>
+
+<MudGrid>
+    @foreach (var tbl in FilteredTables)
+    {
+        <MudItem xs="12" md="6" lg="4">
+            <MudCard Elevation="2" Class="pa-4 rounded-xl h-100" Style="border-top: 3px solid #6366F1;">
+                <div class="d-flex justify-space-between align-center mb-2">
+                    <div class="d-flex align-center gap-2">
+                        <MudIcon Icon="@Icons.Material.Filled.TableChart" Color="Color.Primary" Size="Size.Small" />
+                        <MudText Typo="Typo.subtitle1" Class="font-weight-bold">@tbl.TableName</MudText>
+                    </div>
+                    <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Filled">@tbl.RowCount rows</MudChip>
+                </div>
+                <MudDivider Class="my-2" />
+                <div class="d-flex flex-column gap-1">
+                    @foreach (var col in tbl.Columns)
+                    {
+                        <div class="d-flex justify-space-between align-center py-1" style="border-bottom: 1px dashed rgba(148,163,184,0.15);">
+                            <div class="d-flex align-center gap-1">
+                                @if (col.IsPrimaryKey)
+                                {
+                                    <MudIcon Icon="@Icons.Material.Filled.Key" Color="Color.Warning" Size="Size.Small" Style="font-size: 0.9rem;" />
+                                }
+                                <code style="font-size: 0.78rem; font-weight: 600;">@col.Name</code>
+                            </div>
+                            <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined" Style="font-size: 0.65rem; height: 20px;">
+                                @col.Type @(col.NotNull ? "• NOT NULL" : "")
+                            </MudChip>
+                        </div>
+                    }
+                </div>
+            </MudCard>
+        </MudItem>
+    }
+</MudGrid>
+
+@code {
+    private ArchitectureResponse? _arch;
+    private string _filter = "";
+
+    private IEnumerable<TableSchemaItem> FilteredTables =>
+        (_arch?.Tables ?? new()).Where(t =>
+            string.IsNullOrWhiteSpace(_filter) ||
+            t.TableName.Contains(_filter, StringComparison.OrdinalIgnoreCase) ||
+            t.Columns.Any(c => c.Name.Contains(_filter, StringComparison.OrdinalIgnoreCase)));
+
+    protected override async Task OnInitializedAsync() => await LoadSchemaAsync();
+
+    private async Task LoadSchemaAsync()
+    {
+        try
+        {
+            _arch = await Http.GetFromJsonAsync<ArchitectureResponse>("/api/system/architecture");
+        }
+        catch { }
+    }
+
+    public class ArchitectureResponse
+    {
+        public string SolutionName { get; set; } = "";
+        public string Framework { get; set; } = "";
+        public string DatabaseProvider { get; set; } = "";
+        public int TotalTables { get; set; }
+        public long TotalRows { get; set; }
+        public List<TableSchemaItem> Tables { get; set; } = new();
+    }
+
+    public class TableSchemaItem
+    {
+        public string TableName { get; set; } = "";
+        public long RowCount { get; set; }
+        public int ColumnCount { get; set; }
+        public List<ColumnSchemaItem> Columns { get; set; } = new();
+    }
+
+    public class ColumnSchemaItem
+    {
+        public string Name { get; set; } = "";
+        public string Type { get; set; } = "";
+        public bool NotNull { get; set; }
+        public bool IsPrimaryKey { get; set; }
+    }
+}

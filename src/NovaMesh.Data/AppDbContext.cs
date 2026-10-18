@@ -41,16 +41,19 @@ public class AppDbContext : DbContext
     public DbSet<LocalizationResourceText> LocalizationTexts => Set<LocalizationResourceText>();
     public DbSet<OAuthClientApp> OAuthClients => Set<OAuthClientApp>();
 
+    // CMS Kit Blog Hub (Common across all architectures)
+    public DbSet<Blog> Blogs => Set<Blog>();
+    public DbSet<BlogPost> BlogPosts => Set<BlogPost>();
+    public DbSet<BlogPostReaction> Reactions => Set<BlogPostReaction>();
+    public DbSet<CmsComment> Comments => Set<CmsComment>();
+
     // Domain Specific Module
     public DbSet<CloudResource> CloudResources => Set<CloudResource>();
     public DbSet<DistributedOrder> DistributedOrders => Set<DistributedOrder>();
     public DbSet<DistributedTraceRecord> TraceRecords => Set<DistributedTraceRecord>();
 
-    // CMS Kit Blog Hub
-    public DbSet<Blog> Blogs => Set<Blog>();
-    public DbSet<BlogPost> BlogPosts => Set<BlogPost>();
-    public DbSet<BlogPostReaction> Reactions => Set<BlogPostReaction>();
-    public DbSet<CmsComment> Comments => Set<CmsComment>();
+    // Dynamic Injected Entity: Invoice
+    public DbSet<Invoice> Invoices => Set<Invoice>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

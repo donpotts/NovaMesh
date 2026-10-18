@@ -1,0 +1,170 @@
+@page "/demos/cyber-soc"
+@inject HttpClient Http
+@inject ISnackbar Snackbar
+
+<PageTitle>AegisCyber — AI Zero-Trust SOC & Threat Radar</PageTitle>
+
+<div class="d-flex justify-space-between align-center mb-4 flex-wrap gap-3 pa-4 rounded-xl"
+     style="background: linear-gradient(135deg, rgba(220,38,38,0.18) 0%, rgba(15,23,42,0.95) 60%, rgba(6,182,212,0.15) 100%); border: 1px solid rgba(239,68,68,0.35);">
+    <div>
+        <div class="d-flex align-center gap-2 mb-1">
+            <MudChip T="string" Color="@(_activeThreats > 0 ? Color.Error : Color.Success)" Size="Size.Small" Variant="Variant.Filled" Class="font-weight-bold">
+                @(_activeThreats > 0 ? $"DEFCON 2 • {_activeThreats} ACTIVE THREATS" : "DEFCON 5 • ALL PERIMETERS SECURE")
+            </MudChip>
+            <MudChip T="string" Color="Color.Info" Size="Size.Small" Variant="Variant.Outlined">eBPF XDP + AI Anomaly Engine</MudChip>
+        </div>
+        <MudText Typo="Typo.h5" Class="font-weight-bold">🛡️ AegisCyber Autonomous SOC & Threat Radar</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary">Real-time packet inspection, zero-day payload quarantine, and SPIFFE mTLS mesh verification</MudText>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        <MudButton id="btn-simulate-attack" Variant="Variant.Filled" Color="Color.Error" StartIcon="@Icons.Material.Filled.BugReport" OnClick="SimulateZeroDayAttackAsync">
+            ⚡ Simulate Zero-Day Attack
+        </MudButton>
+        <MudButton id="btn-quarantine-all" Variant="Variant.Filled" Color="Color.Success" StartIcon="@Icons.Material.Filled.Security" OnClick="QuarantineAllAsync">
+            🛡️ Auto-Quarantine All (@_activeThreats)
+        </MudButton>
+    </div>
+</div>
+
+<MudGrid Class="mb-4">
+    <MudItem xs="12" sm="6" md="3">
+        <MudCard Elevation="2" Class="pa-4 rounded-xl" Style="border-top: 3px solid #EF4444;">
+            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="font-weight-bold">THREAT PERIMETER STATUS</MudText>
+            <MudText Typo="Typo.h4" Class="font-weight-bold my-1" Color="@(_activeThreats > 0 ? Color.Error : Color.Success)">
+                @(_activeThreats > 0 ? "ELEVATED" : "HARDENED")
+            </MudText>
+            <MudText Typo="Typo.caption" Color="Color.Secondary">@_quarantinedCount payloads neutralized today</MudText>
+        </MudCard>
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <MudCard Elevation="2" Class="pa-4 rounded-xl" Style="border-top: 3px solid #06B6D4;">
+            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="font-weight-bold">WAF / eBPF PACKET RATE</MudText>
+            <MudText Typo="Typo.h4" Class="font-weight-bold my-1">@_packetRate.ToString("N0") <span style="font-size:0.9rem;">pps</span></MudText>
+            <MudText Typo="Typo.caption" Color="Color.Success">● Sub-millisecond L7 inspection</MudText>
+        </MudCard>
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <MudCard Elevation="2" Class="pa-4 rounded-xl" Style="border-top: 3px solid #10B981;">
+            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="font-weight-bold">ZERO-TRUST mTLS NODES</MudText>
+            <MudText Typo="Typo.h4" Class="font-weight-bold my-1">48 / 48</MudText>
+            <MudText Typo="Typo.caption" Color="Color.Success">✓ SPIFFE X.509 Identities Verified</MudText>
+        </MudCard>
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <MudCard Elevation="2" Class="pa-4 rounded-xl" Style="border-top: 3px solid #8B5CF6;">
+            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="font-weight-bold">AI ANOMALY PRECISION</MudText>
+            <MudText Typo="Typo.h4" Class="font-weight-bold my-1">99.7%</MudText>
+            <MudText Typo="Typo.caption" Color="Color.Secondary">Isolation Forest + Neural Classifier</MudText>
+        </MudCard>
+    </MudItem>
+</MudGrid>
+
+<MudCard Elevation="2" Class="pa-4 rounded-xl">
+    <div class="d-flex justify-space-between align-center mb-3">
+        <MudText Typo="Typo.h6" Class="font-weight-bold">📡 Live Intrusion Detection & Quarantine Ledger</MudText>
+        <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Outlined">Real-Time SOC Stream</MudChip>
+    </div>
+    <MudTable Items="@_incidents" Hover="true" Dense="true" Elevation="0">
+        <HeaderContent>
+            <MudTh>Incident ID</MudTh>
+            <MudTh>Attack Vector</MudTh>
+            <MudTh>Source IP / ASN</MudTh>
+            <MudTh>Target Service</MudTh>
+            <MudTh>Severity</MudTh>
+            <MudTh>Status</MudTh>
+            <MudTh>Action</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd><code>@context.Code</code></MudTd>
+            <MudTd><MudText Typo="Typo.body2" Class="font-weight-bold">@context.Vector</MudText></MudTd>
+            <MudTd><code>@context.SourceIp</code></MudTd>
+            <MudTd><MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@context.TargetService</MudChip></MudTd>
+            <MudTd>
+                <MudChip T="string" Size="Size.Small" Color="@(context.Severity == "CRITICAL" ? Color.Error : context.Severity == "HIGH" ? Color.Warning : Color.Info)">
+                    @context.Severity
+                </MudChip>
+            </MudTd>
+            <MudTd>
+                @if (context.IsQuarantined)
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Success" Icon="@Icons.Material.Filled.CheckCircle">Quarantined</MudChip>
+                }
+                else
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Error" Icon="@Icons.Material.Filled.Warning">Active Threat</MudChip>
+                }
+            </MudTd>
+            <MudTd>
+                @if (!context.IsQuarantined)
+                {
+                    <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Error" OnClick="@(() => QuarantineSingle(context))">
+                        🔒 Block IP
+                    </MudButton>
+                }
+                else
+                {
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Mitigated via eBPF</MudText>
+                }
+            </MudTd>
+        </RowTemplate>
+    </MudTable>
+</MudCard>
+
+@code {
+    private int _packetRate = 148920;
+    private int _quarantinedCount => _incidents.Count(i => i.IsQuarantined);
+    private int _activeThreats => _incidents.Count(i => !i.IsQuarantined);
+    private int _attackSeq = 905;
+
+    private List<SocIncident> _incidents = new()
+    {
+        new("SOC-904", "Zero-Day GraphQL Introspection Exploit", "185.220.101.44 (ASN-49981)", "api-gateway-edge", "CRITICAL", false),
+        new("SOC-903", "Distributed Credential Stuffing Burst", "45.155.205.12 (ASN-208091)", "identity-oauth-sts", "HIGH", false),
+        new("SOC-902", "SQL Injection Union Payload Probe", "103.145.13.88 (ASN-138915)", "orders-write-api", "CRITICAL", true),
+        new("SOC-901", "LLM Prompt Injection / Jailbreak Attempt", "194.26.29.110 (ASN-44477)", "ai-rag-orchestrator", "MEDIUM", true),
+        new("SOC-900", "Abnormal JWT Signature Replay", "91.240.118.172 (ASN-57043)", "payments-ledger-svc", "HIGH", true)
+    };
+
+    private async Task SimulateZeroDayAttackAsync()
+    {
+        _attackSeq++;
+        _packetRate += 34500;
+        var vectors = new[]
+        {
+            ("HTTP/2 Rapid Reset DDoS Flood", "198.51.100." + (_attackSeq % 250), "ingress-envoy-mesh", "CRITICAL"),
+            ("Remote Code Deserialization Probe", "203.0.113." + (_attackSeq % 250), "worker-billing-engine", "CRITICAL"),
+            ("Lateral Movement mTLS Spoof Attempt", "192.0.2." + (_attackSeq % 250), "vault-secrets-store", "HIGH")
+        };
+        var pick = vectors[_attackSeq % vectors.Length];
+        _incidents.Insert(0, new SocIncident($"SOC-{_attackSeq}", pick.Item1, $"{pick.Item2} (ASN-DARKNET)", pick.Item3, pick.Item4, false));
+        Snackbar.Add($"🚨 INTRUSION ALERT: {pick.Item1} detected on {pick.Item3}!", Severity.Error);
+        try { await Http.PostAsJsonAsync("/api/events/broadcast", new { Title = $"SOC Alert SOC-{_attackSeq}", Message = pick.Item1, Severity = "Error" }); } catch { }
+    }
+
+    private void QuarantineSingle(SocIncident item)
+    {
+        item.IsQuarantined = true;
+        Snackbar.Add($"🛡️ Blocked source IP {item.SourceIp} at eBPF edge firewall.", Severity.Success);
+    }
+
+    private void QuarantineAllAsync()
+    {
+        foreach (var inc in _incidents) inc.IsQuarantined = true;
+        _packetRate = 142100;
+        Snackbar.Add("🛡️ All active threats quarantined! Perimeter restored to DEFCON 5.", Severity.Success);
+    }
+
+    public class SocIncident
+    {
+        public string Code { get; set; }
+        public string Vector { get; set; }
+        public string SourceIp { get; set; }
+        public string TargetService { get; set; }
+        public string Severity { get; set; }
+        public bool IsQuarantined { get; set; }
+        public SocIncident(string code, string vector, string sourceIp, string targetService, string severity, bool isQuarantined)
+        {
+            Code = code; Vector = vector; SourceIp = sourceIp; TargetService = targetService; Severity = severity; IsQuarantined = isQuarantined;
+        }
+    }
+}

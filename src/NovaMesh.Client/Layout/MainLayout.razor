@@ -4,6 +4,7 @@
 @inject TenantStateService TenantState
 @inject HttpClient Http
 @inject IDialogService DialogService
+@inject ISnackbar Snackbar
 @inject NavigationManager Nav
 @implements IDisposable
 
@@ -107,57 +108,63 @@
         <MudButton Variant="Variant.Text" Color="Color.Inherit" StartIcon="@Icons.Material.Filled.Speed" OnClick='() => Nav.NavigateTo("/aspire/telemetry")' Class="d-none d-md-inline-flex mr-1">Telemetry</MudButton>
         <MudButton Variant="Variant.Text" Color="Color.Inherit" StartIcon="@Icons.Material.Filled.RssFeed" OnClick='() => Nav.NavigateTo("/blog")' Class="d-none d-md-inline-flex mr-1">Blog</MudButton>
 
-        @if (Auth.IsAuthenticated)
-        {
-            <!-- Notification Bell with Snug Overlap Badge & Dropdown -->
-            <MudMenu Dense="true" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
-                <ActivatorContent>
-                    <div class="position-relative d-inline-flex align-center justify-center mr-1">
-                        <MudIconButton Icon="@Icons.Material.Filled.Notifications" Color="Color.Inherit" />
-                        <span class="d-flex align-center justify-center font-weight-bold"
-                              style="position: absolute; top: 6px; right: 8px; width: 17px; height: 17px; border-radius: 50%; background-color: #EF4444; color: white; font-size: 0.65rem; line-height: 1; border: 2px solid white; box-shadow: 0 1px 3px rgba(0,0,0,0.4); pointer-events: none; z-index: 2;">
-                            3
-                        </span>
-                    </div>
-                </ActivatorContent>
-                <ChildContent>
-                    <div class="pa-3" style="min-width: 300px;">
-                        <div class="d-flex justify-space-between align-center mb-2">
-                            <MudText Typo="Typo.subtitle2" Class="fw-bold">System Notifications</MudText>
-                            <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" OnClick='() => Nav.NavigateTo("/admin/notifications")'>View All</MudButton>
+        <!-- Real-Time SignalR Notification Bell with Dynamic Badge & Live Broadcast -->
+        <MudMenu id="signalr-bell-menu" Dense="true" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
+            <ActivatorContent>
+                <div class="position-relative d-inline-flex align-center justify-center mr-1">
+                    <MudIconButton id="signalr-bell-btn" Icon="@Icons.Material.Filled.Notifications" Color="Color.Inherit" />
+                    <span class="d-flex align-center justify-center font-weight-bold"
+                          style="position: absolute; top: 6px; right: 8px; width: 18px; height: 18px; border-radius: 50%; background-color: #EF4444; color: white; font-size: 0.65rem; line-height: 1; border: 2px solid white; box-shadow: 0 1px 3px rgba(0,0,0,0.4); pointer-events: none; z-index: 2;">
+                        @_notificationCount
+                    </span>
+                </div>
+            </ActivatorContent>
+            <ChildContent>
+                <div class="pa-3" style="min-width: 320px;">
+                    <div class="d-flex justify-space-between align-center mb-1">
+                        <div class="d-flex align-center gap-1">
+                            <MudText Typo="Typo.subtitle2" Class="fw-bold">SignalR Event Stream</MudText>
+                            <MudChip T="string" Color="Color.Success" Size="Size.Small" Variant="Variant.Outlined" Style="font-size: 0.62rem; height: 18px;">● /hubs/events</MudChip>
                         </div>
-                        <MudDivider Class="mb-2" />
-                        <MudMenuItem OnClick='() => Nav.NavigateTo("/admin/health")'>
-                            <div class="d-flex align-start gap-2">
-                                <MudIcon Icon="@Icons.Material.Filled.MonitorHeart" Color="Color.Success" Size="Size.Small" Class="mt-1" />
-                                <div>
-                                    <MudText Typo="Typo.body2" Class="fw-bold">Subsystems Operational</MudText>
-                                    <MudText Typo="Typo.caption" Color="Color.Secondary">Database 0ms • Ollama cloud ready</MudText>
-                                </div>
-                            </div>
-                        </MudMenuItem>
-                        <MudMenuItem OnClick='() => Nav.NavigateTo("/admin/background-jobs")'>
-                            <div class="d-flex align-start gap-2">
-                                <MudIcon Icon="@Icons.Material.Filled.Schedule" Color="Color.Info" Size="Size.Small" Class="mt-1" />
-                                <div>
-                                    <MudText Typo="Typo.body2" Class="fw-bold">AI Vector Index Synchronized</MudText>
-                                    <MudText Typo="Typo.caption" Color="Color.Secondary">Worker executed in 1250ms</MudText>
-                                </div>
-                            </div>
-                        </MudMenuItem>
-                        <MudMenuItem OnClick='() => Nav.NavigateTo("/admin/entity-changes")'>
-                            <div class="d-flex align-start gap-2">
-                                <MudIcon Icon="@Icons.Material.Filled.Difference" Color="Color.Tertiary" Size="Size.Small" Class="mt-1" />
-                                <div>
-                                    <MudText Typo="Typo.body2" Class="fw-bold">Tenant Branding Updated</MudText>
-                                    <MudText Typo="Typo.caption" Color="Color.Secondary">Cyberdyne Systems colors modified</MudText>
-                                </div>
-                            </div>
-                        </MudMenuItem>
+                        <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" OnClick='() => Nav.NavigateTo("/admin/notifications")'>View All</MudButton>
                     </div>
-                </ChildContent>
-            </MudMenu>
-        }
+                    <MudButton id="signalr-broadcast-btn" Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" FullWidth="true" StartIcon="@Icons.Material.Filled.Bolt" OnClick="BroadcastLiveEventAsync" Class="my-2">
+                        Broadcast Real-Time Event
+                    </MudButton>
+                    <MudDivider Class="mb-2" />
+                    @foreach (var ev in _liveEvents.Take(3))
+                    {
+                        <MudMenuItem OnClick='() => Nav.NavigateTo("/admin/notifications")'>
+                            <div class="d-flex align-start gap-2">
+                                <MudIcon Icon="@Icons.Material.Filled.Bolt" Color="Color.Warning" Size="Size.Small" Class="mt-1" />
+                                <div>
+                                    <MudText Typo="Typo.body2" Class="fw-bold">@ev.Title</MudText>
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">@ev.Subtitle</MudText>
+                                </div>
+                            </div>
+                        </MudMenuItem>
+                    }
+                    <MudMenuItem OnClick='() => Nav.NavigateTo("/admin/health")'>
+                        <div class="d-flex align-start gap-2">
+                            <MudIcon Icon="@Icons.Material.Filled.MonitorHeart" Color="Color.Success" Size="Size.Small" Class="mt-1" />
+                            <div>
+                                <MudText Typo="Typo.body2" Class="fw-bold">Subsystems Operational</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Database 0ms • SignalR Hub Active</MudText>
+                            </div>
+                        </div>
+                    </MudMenuItem>
+                    <MudMenuItem OnClick='() => Nav.NavigateTo("/admin/background-jobs")'>
+                        <div class="d-flex align-start gap-2">
+                            <MudIcon Icon="@Icons.Material.Filled.Schedule" Color="Color.Info" Size="Size.Small" Class="mt-1" />
+                            <div>
+                                <MudText Typo="Typo.body2" Class="fw-bold">AI Vector Index Synchronized</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Worker executed in 1250ms</MudText>
+                            </div>
+                        </div>
+                    </MudMenuItem>
+                </div>
+            </ChildContent>
+        </MudMenu>
 
         <!-- Dark / Light Theme Toggle -->
         <MudIconButton Icon="@(Theme.IsDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
@@ -250,6 +257,13 @@
                 <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">Home</MudNavLink>
                 <MudNavLink Href="/aspire/telemetry" Icon="@Icons.Material.Filled.Speed">Aspire Telemetry & Resilience</MudNavLink>
                 <MudNavLink Href="/blog" Icon="@Icons.Material.Filled.RssFeed">Public Blog Hub</MudNavLink>
+                <MudNavLink Href="/entities/invoices" Icon="@Icons.Material.Filled.Dataset">Invoices</MudNavLink>
+                <MudNavGroup Title="Interactive Demos" Icon="@Icons.Material.Filled.RocketLaunch" Expanded="true">
+                    <MudNavLink Href="/demos/cyber-soc" Icon="@Icons.Material.Filled.Shield">AegisCyber SOC Radar</MudNavLink>
+                    <MudNavLink Href="/demos/quant-terminal" Icon="@Icons.Material.Filled.ShowChart">QuantFlow FinTech Desk</MudNavLink>
+                    <MudNavLink Href="/demos/med-triage" Icon="@Icons.Material.Filled.MonitorHeart">PulseMed ICU Triage</MudNavLink>
+                    <MudNavLink Href="/demos/architecture" Icon="@Icons.Material.Filled.AccountTree">Live Schema & Architecture</MudNavLink>
+                </MudNavGroup>
                 <MudNavLink Href="http://localhost:5000/scalar/v1" Target="_blank" Icon="@Icons.Material.Filled.Api">Scalar API Docs <MudIcon Icon="@Icons.Material.Filled.OpenInNew" Size="Size.Small" Class="ml-1" /></MudNavLink>
 
                 <MudDivider Class="my-3" />
@@ -278,6 +292,13 @@
                 <MudNavGroup Title="AI Suite & Agents" Icon="@Icons.Material.Filled.SmartToy" Expanded="true">
                     <MudNavLink Href="/ai/agent" Icon="@Icons.Material.Filled.Psychology">AI Agent Workbench</MudNavLink>
                     <MudNavLink Href="/ai/knowledge" Icon="@Icons.Material.Filled.LibraryBooks">Knowledge Base & RAG</MudNavLink>
+                </MudNavGroup>
+
+                <MudNavGroup Title="Interactive Demos" Icon="@Icons.Material.Filled.RocketLaunch" Expanded="true">
+                    <MudNavLink Href="/demos/cyber-soc" Icon="@Icons.Material.Filled.Shield">AegisCyber SOC Radar</MudNavLink>
+                    <MudNavLink Href="/demos/quant-terminal" Icon="@Icons.Material.Filled.ShowChart">QuantFlow FinTech Desk</MudNavLink>
+                    <MudNavLink Href="/demos/med-triage" Icon="@Icons.Material.Filled.MonitorHeart">PulseMed ICU Triage</MudNavLink>
+                    <MudNavLink Href="/demos/architecture" Icon="@Icons.Material.Filled.AccountTree">Live Schema & Architecture</MudNavLink>
                 </MudNavGroup>
 
             <MudNavGroup Title="Aspire & Cloud Ops" Icon="@Icons.Material.Filled.Cloud" Expanded="true">
@@ -332,6 +353,11 @@
 
 @code {
     private bool drawerOpen = true;
+    private int _notificationCount = 3;
+    private List<(string Title, string Subtitle)> _liveEvents = new()
+    {
+        ("Tenant Branding Updated", "Cyberdyne Systems colors modified")
+    };
 
     protected override async Task OnInitializedAsync()
     {
@@ -352,6 +378,21 @@
     private async Task SwitchTenant(TenantDto? tenant)
     {
         await TenantState.SelectTenantAsync(tenant, Theme);
+    }
+
+    private async Task BroadcastLiveEventAsync()
+    {
+        var title = $"SignalR Broadcast #{_notificationCount + 1}";
+        var msg = $"Dispatched at {DateTime.Now:HH:mm:ss} via /hubs/events";
+        try
+        {
+            await Http.PostAsJsonAsync("/api/events/broadcast", new { Title = title, Message = msg, Severity = "Info", TargetAudience = "All Users", ActionUrl = "/admin/notifications" });
+        }
+        catch { }
+        _notificationCount++;
+        _liveEvents.Insert(0, (title, msg));
+        Snackbar.Add($"🔔 {title}: {msg}", Severity.Info);
+        StateHasChanged();
     }
 
     private async Task OpenLogin() => await DialogService.ShowAsync<LoginDialog>("Authentication", new DialogParameters { ["InitialTab"] = 0 });

@@ -1,0 +1,142 @@
+@page "/demos/med-triage"
+@inject ISnackbar Snackbar
+
+<PageTitle>PulseMed — Smart ICU Telemetry & AI Clinical Triage</PageTitle>
+
+<div class="d-flex justify-space-between align-center mb-4 flex-wrap gap-3 pa-4 rounded-xl"
+     style="background: linear-gradient(135deg, rgba(6,182,212,0.18) 0%, rgba(15,23,42,0.95) 60%, rgba(16,185,129,0.18) 100%); border: 1px solid rgba(6,182,212,0.35);">
+    <div>
+        <div class="d-flex align-center gap-2 mb-1">
+            <MudChip T="string" Color="Color.Info" Size="Size.Small" Variant="Variant.Filled" Class="font-weight-bold">
+                🏥 HL7 FHIR R4 • REAL-TIME ICU TELEMETRY
+            </MudChip>
+            <MudChip T="string" Color="Color.Success" Size="Size.Small" Variant="Variant.Outlined">AI Sepsis & NEWS2 Early Warning</MudChip>
+        </div>
+        <MudText Typo="Typo.h5" Class="font-weight-bold">🩺 PulseMed AI Clinical Triage & ICU Command Center</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary">Continuous multi-parameter bedside waveform telemetry, automated NEWS2 scoring, and rapid response dispatch</MudText>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        <MudButton id="btn-admit-patient" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.LocalHospital" OnClick="AdmitEmergencyPatient">
+            🚑 Admit Emergency Patient
+        </MudButton>
+        <MudButton id="btn-stabilize-all" Variant="Variant.Filled" Color="Color.Success" StartIcon="@Icons.Material.Filled.HealthAndSafety" OnClick="StabilizeAllPatients">
+            🤖 Run AI Clinical Stabilization
+        </MudButton>
+    </div>
+</div>
+
+<MudGrid Class="mb-4">
+    @foreach (var p in _patients)
+    {
+        <MudItem xs="12" md="4">
+            <MudCard Elevation="3" Class="pa-4 rounded-xl h-100"
+                     Style="@($"border-top: 4px solid {(p.RiskScore >= 70 ? "#EF4444" : p.RiskScore >= 40 ? "#F59E0B" : "#10B981")};")">
+                <div class="d-flex justify-space-between align-start mb-2">
+                    <div>
+                        <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Outlined" Class="mb-1">@p.BedCode</MudChip>
+                        <MudText Typo="Typo.h6" Class="font-weight-bold">@p.PatientName</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">@p.Condition</MudText>
+                    </div>
+                    <MudChip T="string" Size="Size.Small" Color="@(p.RiskScore >= 70 ? Color.Error : p.RiskScore >= 40 ? Color.Warning : Color.Success)">
+                        @(p.RiskScore >= 70 ? "CRITICAL TRIAGE" : p.RiskScore >= 40 ? "MONITORING" : "STABLE")
+                    </MudChip>
+                </div>
+
+                <MudDivider Class="my-2" />
+
+                <MudGrid Spacing="1" Class="my-1">
+                    <MudItem xs="4">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">HEART RATE</MudText>
+                        <MudText Typo="Typo.subtitle1" Class="font-weight-bold" Color="@(p.HeartRate > 110 ? Color.Error : Color.Success)">
+                            ❤️ @p.HeartRate <span style="font-size:0.7rem;">bpm</span>
+                        </MudText>
+                    </MudItem>
+                    <MudItem xs="4">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">SpO2 SAT</MudText>
+                        <MudText Typo="Typo.subtitle1" Class="font-weight-bold" Color="@(p.SpO2 < 94 ? Color.Warning : Color.Info)">
+                            🫁 @p.SpO2%
+                        </MudText>
+                    </MudItem>
+                    <MudItem xs="4">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">BLOOD PRESS</MudText>
+                        <MudText Typo="Typo.subtitle1" Class="font-weight-bold">
+                            🩸 @p.BloodPressure
+                        </MudText>
+                    </MudItem>
+                </MudGrid>
+
+                <div class="mt-3">
+                    <div class="d-flex justify-space-between mb-1">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">AI NEWS2 Sepsis/Acuity Risk</MudText>
+                        <MudText Typo="Typo.caption" Class="font-weight-bold">@p.RiskScore%</MudText>
+                    </div>
+                    <MudProgressLinear Value="@p.RiskScore" Color="@(p.RiskScore >= 70 ? Color.Error : p.RiskScore >= 40 ? Color.Warning : Color.Success)" Rounded="true" Size="Size.Medium" />
+                </div>
+
+                <div class="d-flex justify-end mt-3">
+                    <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Success" OnClick="@(() => StabilizePatient(p))">
+                        🩺 Administer Protocol
+                    </MudButton>
+                </div>
+            </MudCard>
+        </MudItem>
+    }
+</MudGrid>
+
+@code {
+    private int _bedSeq = 107;
+
+    private List<PatientTelemetry> _patients = new()
+    {
+        new("ICU-BED-101", "Eleanor Vance, 64F", "Post-Op Coronary Bypass • Telemetry Sync", 118, 92, "148/92", 78),
+        new("ICU-BED-102", "Marcus Sterling, 51M", "Acute Respiratory Observation • BiPAP", 96, 95, "132/84", 46),
+        new("ICU-BED-103", "Sophia Chen, 38F", "Neuro-Vascular Recovery • Stable", 72, 99, "116/74", 14),
+        new("ICU-BED-104", "Arthur Pendelton, 71M", "Sepsis Early Warning Protocol • IV Fluids", 112, 93, "102/64", 72),
+        new("ICU-BED-105", "Elena Rostova, 29F", "Post-Trauma Orthopedic Monitoring", 68, 99, "118/76", 12),
+        new("ICU-BED-106", "David Kim, 45M", "Cardiac Arrhythmia Telemetry", 88, 97, "126/80", 34)
+    };
+
+    private void AdmitEmergencyPatient()
+    {
+        _bedSeq++;
+        var p = new PatientTelemetry($"ICU-BED-{_bedSeq}", $"Emergency Admission #{_bedSeq}", "Acute Tachycardia & Hypoxia Triage", 126, 90, "154/96", 84);
+        _patients.Insert(0, p);
+        Snackbar.Add($"🚑 Admitted {p.PatientName} to {p.BedCode} — AI Triage Priority: CRITICAL", Severity.Warning);
+    }
+
+    private void StabilizePatient(PatientTelemetry p)
+    {
+        p.HeartRate = 74;
+        p.SpO2 = 99;
+        p.BloodPressure = "118/76";
+        p.RiskScore = 15;
+        Snackbar.Add($"🩺 Clinical protocol administered for {p.PatientName} ({p.BedCode}). Vitals stabilized!", Severity.Success);
+    }
+
+    private void StabilizeAllPatients()
+    {
+        foreach (var p in _patients)
+        {
+            p.HeartRate = 72;
+            p.SpO2 = 99;
+            p.BloodPressure = "118/75";
+            p.RiskScore = 12;
+        }
+        Snackbar.Add("🤖 AI Clinical Protocol synchronized across all ICU beds — all patients stabilized!", Severity.Success);
+    }
+
+    public class PatientTelemetry
+    {
+        public string BedCode { get; set; }
+        public string PatientName { get; set; }
+        public string Condition { get; set; }
+        public int HeartRate { get; set; }
+        public int SpO2 { get; set; }
+        public string BloodPressure { get; set; }
+        public int RiskScore { get; set; }
+        public PatientTelemetry(string bedCode, string patientName, string condition, int heartRate, int spO2, string bp, int riskScore)
+        {
+            BedCode = bedCode; PatientName = patientName; Condition = condition; HeartRate = heartRate; SpO2 = spO2; BloodPressure = bp; RiskScore = riskScore;
+        }
+    }
+}
