@@ -16,6 +16,7 @@
 [![Polly](https://img.shields.io/badge/Polly-Circuit%20Breakers%20%26%20Resilience-007ACC?style=for-the-badge)](https://github.com/App-vNext/Polly)
 [![MudBlazor](https://img.shields.io/badge/MudBlazor-8.2.0%20WASM-7E6FFF?style=for-the-badge&logo=blazor&logoColor=white)](https://mudblazor.com/)
 [![Scalar](https://img.shields.io/badge/API%20Docs-Scalar%20OpenAPI%203.1-00D47E?style=for-the-badge)](https://scalar.com)
+[![Showcase Gallery](https://img.shields.io/badge/📸%20Photo%20Gallery-23%20Verified%20Screenshots-EC4899?style=for-the-badge)](SHOWCASE_GALLERY.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](LICENSE)
 
 ---
@@ -29,15 +30,51 @@
 
 ## 📖 Overview
 
-**NovaMesh** is a turnkey, enterprise-grade distributed cloud mesh and observability platform built on **.NET net10.0**, **Microsoft .NET Aspire 13.6.1**, **OpenTelemetry**, and **Polly Resilience**.
+**NovaMesh** is a turnkey, enterprise-grade distributed cloud mesh, observability platform, and multi-vertical interactive showcase built on **.NET net10.0**, **Microsoft .NET Aspire 13.6.1**, **OpenTelemetry**, **SignalR**, and **Polly Resilience**.
 
 Designed to showcase the bleeding edge of cloud-native architecture, NovaMesh provides:
 1. **Dynamic Service Discovery & AppHost Orchestration** with Docker Desktop integration.
 2. **End-to-End OpenTelemetry Observability** featuring custom `ActivitySource` W3C trace waterfalls and structured telemetry.
-3. **Cross-Service Transaction Ledger** with real database persistence (`app.db`), microsecond stopwatch tracking, and trace correlation.
-4. **Chaos Engineering & Resilience** with Polly 8 circuit breakers, timeout hedging, and interactive fault simulation.
-5. **Modern Reactive UI** powered by MudBlazor 8 WebAssembly with real-time health topologies, trace inspection modals, and live ledger streaming.
+3. **4 Interactive Industry Vertical Demos** built in:
+   - **🛡️ AegisCyber SOC Radar (`/demos/cyber-soc`)**: eBPF packet stream, zero-day attack simulator & 1-click IP quarantine.
+   - **📈 QuantFlow FinTech Desk (`/demos/quant-terminal`)**: Sub-millisecond triangular flash-arbitrage simulator & live blotter.
+   - **🩺 PulseMed ICU Triage (`/demos/med-triage`)**: HL7 FHIR R4 multi-bed ECG vital telemetry & AI NEWS2 sepsis triage.
+   - **🗺️ Live Schema & Architecture Explorer (`/demos/architecture`)**: Real-time `sqlite_master` + `PRAGMA table_info` database introspection across 32 tables.
+4. **Full-Stack Dynamic Entity CRUD (`/entities/invoices`)** with 1-click **CSV / JSON Export** and **`+ Seed 5 Rows`**.
+5. **Always-On SignalR Live Event Mesh (`/hubs/events`)** with instant header broadcast and notification drawer.
 6. **Dual Execution Runtime**: Run 100% in-process without Docker, or orchestrate across multi-process container meshes with Aspire AppHost.
+
+---
+
+## 📸 Interactive Showcase Photo Gallery
+
+> 👉 **[View the Full 23-Screenshot Interactive Showcase Gallery (`SHOWCASE_GALLERY.md`) →](SHOWCASE_GALLERY.md)**
+
+### 🚀 Industry Vertical Command Centers (`/demos/*`)
+| 🛡️ AegisCyber Zero-Trust SOC Radar (`/demos/cyber-soc`) | 📈 QuantFlow FinTech Arbitrage Desk (`/demos/quant-terminal`) |
+| :---: | :---: |
+| ![AegisCyber Zero-Day Attack](docs/screenshots/14_aegiscyber_soc_attack.png) | ![QuantFlow Arbitrage Desk](docs/screenshots/16_quantflow_arbitrage_desk.png) |
+| *Live eBPF packet stream, `DEFCON 2` zero-day attack simulator & 1-click auto-quarantine* | *Sub-millisecond triangular arbitrage execution simulator, live Sharpe/Sortino alpha & L2 book* |
+
+| 🩺 PulseMed Smart ICU Triage (`/demos/med-triage`) | 🗺️ Live System Architecture & 32-Table Schema Explorer (`/demos/architecture`) |
+| :---: | :---: |
+| ![PulseMed ICU Triage](docs/screenshots/17_pulsemed_icu_triage.png) | ![Live Schema Architecture Explorer](docs/screenshots/18_live_schema_architecture_explorer.png) |
+| *HL7 FHIR R4 multi-bed SVG ECG monitors, AI NEWS2 sepsis scoring & emergency admission* | *Real-time `sqlite_master` & `PRAGMA table_info` introspection across 32 SQLite tables (222 rows)* |
+
+### ☁️ .NET Aspire Cloud Mesh, AI Agent Workbench & Dynamic CRUD
+| 🌐 NovaMesh Cloud Telemetry (`/aspire/telemetry`) | 🔍 W3C OpenTelemetry Trace Waterfall |
+| :---: | :---: |
+| ![NovaMesh Telemetry](docs/screenshots/01_novamesh_telemetry_dashboard.png) | ![W3C Trace Waterfall](docs/screenshots/02_novamesh_w3c_traces_waterfall.png) |
+
+| 📊 Dynamic CRUD with CSV/JSON Export & `+ Seed 5 Rows` | 🔔 SignalR Live Broadcast & Notification Mesh (`/hubs/events`) |
+| :---: | :---: |
+| ![Dynamic CRUD CSV JSON Seed](docs/screenshots/20_dynamic_crud_csv_json_seed.png) | ![SignalR Live Broadcast](docs/screenshots/19_signalr_live_broadcast.png) |
+
+| 🤖 AI Agent & RAG Workbench (`/ai/agent`) | ✨ Ask2App Natural Language Prompt Builder |
+| :---: | :---: |
+| ![AI Agent Workbench](docs/screenshots/09_ai_agent_rag_workbench.png) | ![Ask2App Prompt Builder](docs/screenshots/22_forge_studio_ask2app_prompt.png) |
+
+> 📸 **[Browse all 23 high-resolution verified screenshots in `SHOWCASE_GALLERY.md` →](SHOWCASE_GALLERY.md)**
 
 ---
 
@@ -125,6 +162,9 @@ sequenceDiagram
 | **Chaos Fault Simulator** | Interactive fault injection endpoint (`/api/aspire/simulate-fault`) to test recovery under load. | ✅ MVP Ready |
 | **Cross-Service Ledger** | Real transactional orders with unique `ORD-ASP-xxxx` identifiers and trace correlation. | ✅ MVP Ready |
 | **MudBlazor 8 WebAssembly** | Modern responsive SPA with dark/light themes, live topology cards, and trace viewer dialogs. | ✅ MVP Ready |
+| **4 Interactive Vertical Demos** | Built-in `AegisCyber SOC` (`/demos/cyber-soc`), `QuantFlow Desk` (`/demos/quant-terminal`), `PulseMed ICU` (`/demos/med-triage`), and `Schema Explorer` (`/demos/architecture`). | ✅ MVP Ready |
+| **Dynamic Entity CRUD + CSV/JSON** | Full-stack `Invoices` module (`/entities/invoices`) with CSV/JSON export & 1-click `+ Seed 5 Rows`. | ✅ MVP Ready |
+| **SignalR Real-Time Event Hub** | Live WebSocket broadcast hub (`/hubs/events`) with instant header notification bell. | ✅ MVP Ready |
 | **Scalar API Explorer** | Interactive OpenAPI 3.1 documentation at `/scalar/v1` for instant endpoint testing. | ✅ MVP Ready |
 | **Standalone DbMigrator** | Zero-downtime EF Core database migration and multi-tenant seed data utility. | ✅ MVP Ready |
 | **Dual Execution Engine** | Seamless transition between lightweight in-process debugging and full multi-container orchestration. | ✅ MVP Ready |
@@ -181,10 +221,20 @@ NovaMesh connects to Docker Desktop via the local named pipe or socket (`docker.
 
 ---
 
-## 📡 API Endpoints Reference
+## 📡 API Endpoints & Interactive Demo Routes
 
-| Method | Route | Description | Auth Required |
+| Method / Type | Route | Description | Auth Required |
 | :--- | :--- | :--- | :---: |
+| `UI Page` | `/demos/cyber-soc` | 🛡️ **AegisCyber**: AI Zero-Trust SOC & Threat Radar | Public |
+| `UI Page` | `/demos/quant-terminal` | 📈 **QuantFlow**: Institutional FinTech & Flash-Arbitrage Desk | Public |
+| `UI Page` | `/demos/med-triage` | 🩺 **PulseMed**: Smart ICU Telemetry & AI Sepsis Triage | Public |
+| `UI Page` | `/demos/architecture` | 🗺️ **Live Schema Explorer**: 32-Table SQLite & Runtime Topology | Public |
+| `UI Page` | `/entities/invoices` | 🧾 **Invoices CRUD**: Dynamic Entity Grid with CSV/JSON & Bulk Seed | Public |
+| `GET` | `/api/system/architecture` | Live SQLite schema introspection (`sqlite_master` + `PRAGMA table_info`) | Public |
+| `GET` | `/api/entities/invoices` | List dynamically injected `Invoice` records | Public |
+| `GET` | `/api/entities/invoices/export` | Export `Invoice` records as `.csv` or `.json` (`?format=csv\|json`) | Public |
+| `POST` | `/api/entities/invoices/seed-batch` | Bulk-seed 5 realistic `Invoice` rows into SQLite | Public |
+| `POST` | `/api/events/broadcast` | Broadcast live real-time notification via SignalR (`/hubs/events`) | Public |
 | `GET` | `/scalar/v1` | Interactive Scalar OpenAPI Documentation | Public |
 | `GET` | `/alive` | Aspire Liveness Health Probe | Public |
 | `GET` | `/health` | Aspire Readiness & DB Health Check | Public |
